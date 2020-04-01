@@ -63,7 +63,7 @@ isTrue a (Con fs)   = and (map (isTrue a) fs)
 isTrue a (Dis fs)   = or (map (isTrue a) fs)
 isTrue a (Imp f g)  = not (isTrue a f) || isTrue a g
 isTrue a (Bim f g)  = isTrue a f == isTrue a g
-isTrue (m@(Mo _ _),w) (Kno i f) =
+isTrue (m@(Mo _ rel),w) (Kno i f) =
   all (\w' -> isTrue (m,w') f) (localState (m, w) i)
 isTrue (m, w) (Ann f g)  = if isTrue (m,w) f then isTrue (m ! f, w) g else True
 
@@ -86,7 +86,6 @@ publicAnnounce m@(Mo val rel) f = Mo newVal newRel where
   prune [] = []
   prune (ws:rest) = [ w | w <- ws, w `elem` map fst newVal ] : prune rest
 
-
 -- some test models and formulas
 mod1, mod2, mod3 :: Model
 mod1 = Mo [(0, [pA]), (1, [])] [(me, [[0, 1]])]
@@ -100,12 +99,12 @@ form2 = Neg (Kno me (Kno jack $ Dis [P pA, P pB]))
 form3 = Con [Kno jack (Dis [P pA, P pB]),
              Neg $ Kno me (Kno jack (Dis [P pA, P pB]))]
 
-
 -- Muddy Children
 muddyModel :: Model
 muddyModel =  Mo worldSpace childrenRelations
 
 -- all possible combinations of children being muddy or not.
+-- NOTE: should empty set be there? YES.
 worldSpace :: [(Int, Assignment)]
 worldSpace = [ (0, []),
                (1, [isMuddy0]),
@@ -119,10 +118,10 @@ worldSpace = [ (0, []),
 -- the agents and relations, worlds where agents are muddy are reachable from
 -- worlds where they are not, given that the rest is the same. This is because
 -- they do not know the state of their own muddiness. the rest is observable
-childrenRelations :: [ (Agent, [[Int]]) ]
-childrenRelations = [ (muddyChild0, [[0, 1], [2, 4], [3, 5], [6, 7]])
-                    , (muddyChild1, [[0, 2], [1, 4], [3, 6], [5, 7]])
-                    , (muddyChild2, [[0, 3], [1, 5], [2, 6], [4, 7]]) ]
+childrenRelations :: [(Agent,[[Int]])]
+childrenRelations = [ (muddyChild0, [[0, 1], [2, 4], [3, 5], [6, 7]]),
+                      (muddyChild1, [[0, 2], [1, 4], [3, 6], [5, 7]]),
+                      (muddyChild2, [[0, 3], [1, 5], [2, 6], [4, 7]])]
 
 -- the children, with the names of donald duck's nephews for no good reason
 muddyChild0, muddyChild1, muddyChild2 :: Agent
@@ -142,21 +141,21 @@ knowWhether i f = Dis [ Kno i f, Kno i (Neg f) ]
 -- returns the model in which a announcements have been made
 muddyAfter :: Int -> Model
 muddyAfter 0 = muddyModel
-muddyAfter 1 = muddyModel ! atLeastOneMuddy
+muddyAfter 1 = muddyModel ! atLeastOne
 muddyAfter k = muddyAfter (k - 1) ! nobodyKnows
 
-atLeastOneMuddy :: Formula
-atLeastOneMuddy = Dis [P isMuddy0, P isMuddy1, P isMuddy2]
+atLeastOne :: Formula
+atLeastOne = Dis [P isMuddy0, P isMuddy1, P isMuddy2]
 
 nobodyKnows :: Formula
-nobodyKnows = Con [ Neg $ knowWhether muddyChild0 (P isMuddy0)
-                  , Neg $ knowWhether muddyChild1 (P isMuddy1)
-                  , Neg $ knowWhether muddyChild2 (P isMuddy2) ]
+nobodyKnows = Con [ Neg (knowWhether muddyChild0 (P isMuddy0))
+                  , Neg (knowWhether muddyChild1 (P isMuddy1))
+                  , Neg (knowWhether muddyChild2 (P isMuddy2)) ]
 
 somebodyKnows :: Formula
-somebodyKnows = Dis [ knowWhether muddyChild0 (P isMuddy0)
-                    , knowWhether muddyChild1 (P isMuddy1)
-                    , knowWhether muddyChild2 (P isMuddy2) ]
+somebodyKnows = Dis [ (knowWhether muddyChild0 (P isMuddy0))
+                    , (knowWhether muddyChild1 (P isMuddy1))
+                    , (knowWhether muddyChild2 (P isMuddy2)) ]
 
 -- testing muddy children
 test1, test2, test3, test4, test5, test6 :: Bool
@@ -167,7 +166,7 @@ test1 = (muddyModel, 3) |= Con [ P isMuddy2, Kno muddyChild0 (P isMuddy2) ]
 test2 = (muddyModel, 3) |= Con [ P isMuddy2, Neg (Kno muddyChild2 (P isMuddy2)) ]
 
 -- child 2 is muddy. after 1 announcement child 2 should know.
-test3 = (muddyModel, 3) |= ann atLeastOneMuddy (Kno muddyChild2 (P isMuddy2))
+test3 = (muddyModel, 3) |= ann atLeastOne (Kno muddyChild2 (P isMuddy2))
 
 -- all children are muddy. no child should know their own muddiness.
 test4 = (muddyModel, 7) |= Con [ P isMuddy0, P isMuddy1, P isMuddy2, nobodyKnows ]
@@ -177,7 +176,7 @@ test5 = (muddyModel, 7) |= Con [ P isMuddy0, P isMuddy1, P isMuddy2
                                , Kno muddyChild0 (Con [P isMuddy1, P isMuddy2])]
 
 -- all children are muddy. after 3 announcements all children should know their own muddiness.
-test6 = (muddyModel, 7) |= ann atLeastOneMuddy (ann nobodyKnows (ann nobodyKnows
+test6 = (muddyModel, 7) |= ann atLeastOne (ann nobodyKnows (ann nobodyKnows
                             (Con [ P isMuddy0, P isMuddy1, P isMuddy2
                                  , Kno muddyChild0 (P isMuddy0)
                                  , Kno muddyChild1 (P isMuddy1)
@@ -185,17 +184,8 @@ test6 = (muddyModel, 7) |= ann atLeastOneMuddy (ann nobodyKnows (ann nobodyKnows
 
 -- NOTE: make this even nicer
 findMuddyNumber :: (Model,Int) -> Int
-findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOneMuddy, w) + 1 where
+findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOne, w) + 1 where
            loop (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! nobodyKnows, w) + 1
-
-findMuddyNumbers :: (Model,[Int]) -> Int
-findMuddyNumbers (_, []) = -1
-findMuddyNumbers (m, w:rest) =
-  if curNumber == nextNumber || nextNumber == -1
-    then curNumber
-    else error "not all models have the same number of muddy children" where
-      curNumber = findMuddyNumber (m, w)
-      nextNumber = findMuddyNumbers (m, rest)
 
 -- this will run all tests and write whether they passed or failed
 test :: IO ()
@@ -208,63 +198,10 @@ test = putStr (unlines [s1, s2, s3, s4, s5, s6]) where
   s6 = "test6 " ++ (if test6 then "passed" else "failed")
 
 
--- NOTE: exercises!
+-- NOTE: exercises! ()
+muddyModelFor :: Int -> Int -> (Model,Int)
+muddyModelFor n m = undefined -- n children, of which m are muddy
 
--- n children, of which m are muddy
--- NOTE: I chose to return a list of all worlds where m children are muddy,
---       instead of just the first.
-muddyModelFor :: Int -> Int -> (Model,[Int])
-muddyModelFor n m = ( Mo worlds relations, mWorlds) where
-  worlds = makeMuddyWorlds n
-  relations = makeNMuddyChildren worlds n
-  mWorlds = getMMuddyWorlds worlds m
-
--- makes all possible worlds for up to n children
-makeMuddyWorlds :: Int -> [ (Int, [Proposition]) ]
-makeMuddyWorlds 0 = [ (0, []) ]
-makeMuddyWorlds n = (makeMuddyWorldforN n n worldList) ++ worldList  where
-  worldList = makeMuddyWorldsAux (n - 1) n
-
--- auxiliary function for makeNMuddyWorlds that remembers the total number n.
-makeMuddyWorldsAux :: Int -> Int -> [ (Int, [Proposition]) ]
-makeMuddyWorldsAux m n = makeMuddyWorldforN m n worldList ++ worldList where
-  worldList = makeMuddyWorldsAux (m - 1) n
-
--- makes all possible worlds for exactly n children
--- NOTE: not implemented yet!
-makeMuddyWorldforN :: Int -> Int -> [ (Int, [Proposition]) ] -> [ (Int, [Proposition]) ]
-makeMuddyWorldforN m n worlds = makeMuddyWorldforNAux m n (take m (cycle [True]) ++ take (n - m) (cycle [False])) worlds
---makeNMuddyWorldforN _ _ _ = undefined
-
--- NOTE: not implemented yet!
-makeMuddyWorldforNAux :: Int -> Int -> [Bool] -> [ (Int, [Proposition]) ] -> [ (Int, [Proposition]) ]
-makeMuddyWorldforNAux m n curCombi ((x,_):_) = if curCombi == (take (n - m) (cycle [False]) ++ take m (cycle [True])) then [ (x + 1, assignment) ] else undefined where
-  assignment = undefined
-
--- makes n children and their relations
--- NOTE: not implemented yet!
-makeNMuddyChildren :: [ (Int, [Proposition]) ] -> Int -> [ (Agent, [[Int]]) ]
-makeNMuddyChildren = undefined --
-
--- makes list of all the agents in the model
--- NOTE: n^2 where it really shouldn't have to be...
-makeChildren :: Int -> [Agent]
-makeChildren 0 = []
-makeChildren 1 = [ "childA" ]
-makeChildren n = makeChildren (n - 1) ++ [ "child" ++ [child n] ] where
-  child :: Int -> Char
-  child 2 = 'B'
-  child n = succ (child (n - 1))
-
--- makes list of all the propositions in the model (1 = isMuddyA, 2 = isMuddyB, etc.)
-makePropositions :: Int -> [Proposition]
-makePropositions 0 = []
-makePropositions n = [1..n]
-
--- gets a list of all worlds in which exactly m children are muddy
-getMMuddyWorlds :: [ (Int, [Proposition]) ] -> Int -> [Int]
-getMMuddyWorlds [] _ = []
-getMMuddyWorlds (x:rest) m = if length (snd x) == m then fst x : getMMuddyWorlds rest m else getMMuddyWorlds rest m
 
 -- benchmark this!
 -- use :
@@ -273,7 +210,7 @@ getMMuddyWorlds (x:rest) m = if length (snd x) == m then fst x : getMMuddyWorlds
 -- ...
 -- (0.01 secs, 112,200 bytes)
 check :: Int -> Int -> Bool
-check n m = findMuddyNumbers (muddyModelFor n m) == m
+check n m = findMuddyNumber (muddyModelFor n m) == m
 
 
 -- practical stuff:
