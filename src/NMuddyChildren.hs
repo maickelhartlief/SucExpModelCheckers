@@ -21,7 +21,7 @@ import ThreeMuddyChildren
 muddyModelFor :: Int -> Int -> (Model,[Int])
 muddyModelFor n m = ( Mo worlds relations, mWorlds) where
   worlds = makeMuddyWorlds n
-  relations = makeNMuddyChildren worlds n
+  relations = makeMuddyChildren worlds n
   mWorlds = getMMuddyWorlds worlds m
 
 -- makes all possible worlds for up to n children
@@ -38,35 +38,38 @@ makeMuddyWorldsAux m n = makeMuddyWorldforN m n worldList ++ worldList where
 -- makes all possible worlds for exactly n children
 -- NOTE: not implemented yet!
 makeMuddyWorldforN :: Int -> Int -> [ (Int, [Proposition]) ] -> [ (Int, [Proposition]) ]
-makeMuddyWorldforN m n worlds = makeMuddyWorldforNAux m n (take m (cycle [True]) ++ take (n - m) (cycle [False])) worlds
---makeNMuddyWorldforN _ _ _ = undefined
-
--- NOTE: not implemented yet!
-makeMuddyWorldforNAux :: Int -> Int -> [Bool] -> [ (Int, [Proposition]) ] -> [ (Int, [Proposition]) ]
-makeMuddyWorldforNAux m n curCombi ((x,_):_) = if curCombi == (take (n - m) (cycle [False]) ++ take m (cycle [True])) then [ (x + 1, assignment) ] else undefined where
-  assignment = undefined
+makeMuddyWorldforN m n worlds = undefined
 
 -- makes n children and their relations
--- NOTE: not implemented yet!
-makeNMuddyChildren :: [ (Int, [Proposition]) ] -> Int -> [ (Agent, [[Int]]) ]
--- go through all worlds and match them with the world in which their own
--- corresponding isMuddy proposition's truthvalue is switched
-makeNMuddyChildren = undefined
+makeMuddyChildren :: [ (Int, [Proposition]) ] -> Int -> [ (Agent, [[Int]]) ]
+makeMuddyChildren _ (-1) = []
+makeMuddyChildren worlds 0 = [ (child, rel) | child <- makeChild 0
+                                             , rel <- makeRelations worlds 0 ]
+makeMuddyChildren worlds n = makeMuddyChildren worlds (n - 2) ++
+                              [ (child, rel) | child <- makeChild n - 1
+                                             , rel <- makeRelations worlds n - 1 ]
 
--- makes list of all the agents in the model
--- NOTE: n^2 where it really shouldn't have to be...
-makeChildren :: Int -> [Agent]
-makeChildren 0 = []
-makeChildren 1 = [ "childA" ]
-makeChildren n = makeChildren (n - 1) ++ [ "child" ++ [child n] ] where
+-- makes childN
+-- NOTE: creates the entire list everytime or only once per run?
+--       if first: inefficient... if second: haskell is great!
+makeChild :: Int -> Agent
+makeChild 0 = "childA"
+makeChild n = "child" ++ [child n] where
   child :: Int -> Char
-  child 2 = 'B'
+  child 1 = 'B'
   child n = succ (child (n - 1))
+
+-- makes relations for childN
+makeRelations :: [ (Int, [Proposition]) ] -> Int -> [[Int]]
+makeRelations [] _ = []
+makeRelations ((world, ass):nextWorld) n = [ [world, indistinct], makeRelations nextWorld ] where
+  -- finds the world that is indistinguishable from 'world' for child n
+  -- NOTE: not implemented yet!
+  indistinct = undefined
 
 -- makes list of all the propositions in the model (1 = isMuddyA, 2 = isMuddyB, etc.)
 makePropositions :: Int -> [Proposition]
-makePropositions 0 = []
-makePropositions n = [1..n]
+makePropositions n = [0..(n - 1)]
 
 -- gets a list of all worlds in which exactly m children are muddy
 getMMuddyWorlds :: [ (Int, [Proposition]) ] -> Int -> [Int]
