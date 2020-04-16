@@ -1,23 +1,10 @@
-module NMuddyChildren
-    ( muddyModelFor
-    , makeMuddyWorlds
-    , makeMuddyWorldsAux
-    , makeMuddyWorldforN
-    , makeMuddyWorldforNAux
-    , makeNMuddyChildren
-    , makeChildren
-    , makePropositions
-    , getMMuddyWorlds
-    , check
-    , findMuddyNumbers
-    ) where
+module NMuddyChildren where
+
+import Data.List (sortOn,groupBy,sort,delete)
 
 import ModelChecker
-import ThreeMuddyChildren
 
 -- n children, of which m are muddy
--- NOTE: I chose to return a list of all worlds where m children are muddy,
---       instead of just the first.
 muddyModelFor :: Int -> Int -> (Model,[Int])
 muddyModelFor n m = ( Mo worlds relations, mWorlds) where
   worlds = makeMuddyWorlds n
@@ -26,46 +13,30 @@ muddyModelFor n m = ( Mo worlds relations, mWorlds) where
 
 -- makes all possible worlds for up to n children
 makeMuddyWorlds :: Int -> [ (Int, [Proposition]) ]
-makeMuddyWorlds 0 = [ (0, []) ]
-makeMuddyWorlds n = (makeMuddyWorldforN n n worldList) ++ worldList  where
-  worldList = makeMuddyWorldsAux (n - 1) n
+makeMuddyWorlds n = zip [0..] (powerList [0 .. (n-1)])
 
--- auxiliary function for makeNMuddyWorlds that remembers the total number n.
-makeMuddyWorldsAux :: Int -> Int -> [ (Int, [Proposition]) ]
-makeMuddyWorldsAux m n = makeMuddyWorldforN m n worldList ++ worldList where
-  worldList = makeMuddyWorldsAux (m - 1) n
-
--- makes all possible worlds for exactly n children
--- NOTE: not implemented yet!
-makeMuddyWorldforN :: Int -> Int -> [ (Int, [Proposition]) ] -> [ (Int, [Proposition]) ]
-makeMuddyWorldforN m n worlds = undefined
+-- powerList [1,2,3] = [[1,2,3], [1,2], [1,3], [1], [2,3], [2], [3], []]
+powerList :: [a] -> [[a]]
+powerList []     = [ [] ]
+powerList (x:xs) = [ x:rest | rest <- powerList xs ] ++ powerList xs
 
 -- makes n children and their relations
 makeMuddyChildren :: [ (Int, [Proposition]) ] -> Int -> [ (Agent, [[Int]]) ]
-makeMuddyChildren _ (-1) = []
-makeMuddyChildren worlds 0 = [ (child, rel) | child <- makeChild 0
-                                             , rel <- makeRelations worlds 0 ]
-makeMuddyChildren worlds n = makeMuddyChildren worlds (n - 2) ++
-                              [ (child, rel) | child <- makeChild n - 1
-                                             , rel <- makeRelations worlds n - 1 ]
+makeMuddyChildren worlds n = [ (makeChild k, rel) | k <- [0..(n-1)]
+                                                  , let rel = makeRelations worlds k ]
 
 -- makes childN
--- NOTE: creates the entire list everytime or only once per run?
---       if first: inefficient... if second: haskell is great!
 makeChild :: Int -> Agent
-makeChild 0 = "childA"
-makeChild n = "child" ++ [child n] where
-  child :: Int -> Char
-  child 1 = 'B'
-  child n = succ (child (n - 1))
+makeChild n = "child" ++ show n -- show 23 == "23"
 
 -- makes relations for childN
 makeRelations :: [ (Int, [Proposition]) ] -> Int -> [[Int]]
-makeRelations [] _ = []
-makeRelations ((world, ass):nextWorld) n = [ [world, indistinct], makeRelations nextWorld ] where
-  -- finds the world that is indistinguishable from 'world' for child n
-  -- NOTE: not implemented yet!
-  indistinct = undefined
+makeRelations worlds n = sort
+                       . map (sort . map fst)
+                       . groupBy (\w1 w2 -> observationAt w1 == observationAt w2)
+                       . sortOn (observationAt)
+                       $ worlds where
+  observationAt w = delete n $ snd w
 
 -- makes list of all the propositions in the model (1 = isMuddyA, 2 = isMuddyB, etc.)
 makePropositions :: Int -> [Proposition]
@@ -76,20 +47,33 @@ getMMuddyWorlds :: [ (Int, [Proposition]) ] -> Int -> [Int]
 getMMuddyWorlds [] _ = []
 getMMuddyWorlds (x:rest) m = if length (snd x) == m then fst x : getMMuddyWorlds rest m else getMMuddyWorlds rest m
 
--- benchmark this!
--- use :
--- λ> :set +s
--- λ> ...
--- ...
--- (0.01 secs, 112,200 bytes)
+-- checks the number of children for the function muddyModelFor
 check :: Int -> Int -> Bool
 check n m = findMuddyNumbers (muddyModelFor n m) == m
 
+-- finds the number of muddy children in several worlds in a model (should all have the same number)
 findMuddyNumbers :: (Model,[Int]) -> Int
 findMuddyNumbers (_, []) = -1
-findMuddyNumbers (m, w:rest) =
+findMuddyNumbers (m@(Mo _ rel), w:rest) =
   if curNumber == nextNumber || nextNumber == -1
     then curNumber
     else error "not all models have the same number of muddy children" where
-      curNumber = findMuddyNumber (m, w)
+      curNumber = findMuddyNumber (length rel) (m, w)
       nextNumber = findMuddyNumbers (m, rest)
+
+-- finds the number of muddy children in a model with n children
+findMuddyNumber :: Int -> (Model,Int) -> Int
+findMuddyNumber n (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! atLeastOneMuddy n, w) + 1 where
+           loop (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! nobodyKnows n, w) + 1
+
+-- formula of whether at least 1 of n children are muddy
+atLeastOneMuddy :: Int -> Formula
+atLeastOneMuddy n = Dis [ P k | k <- [0..(n-1)] ]
+
+-- formula of whether none of the n children know their own state
+nobodyKnows :: Int -> Formula
+nobodyKnows n = Con [ Neg $ knowWhether ("child" ++ show k) (P k) | k <- [0..(n-1)] ]
+
+-- formula of whether at least 1 of the n children know their own state
+somebodyKnows :: Int -> Formula
+somebodyKnows n = Dis [ knowWhether ("child" ++ show k) (P k) | k <- [0..(n-1)] ]

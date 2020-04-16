@@ -26,6 +26,8 @@ library:
   source-dirs: src
   ghc-options:
     - -Wall
+  ghci-options:
+    - -Wall
 
 executables:
   my-project-exe:

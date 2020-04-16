@@ -1,20 +1,4 @@
-module ThreeMuddyChildren
-    ( muddyModel
-    , worldSpace
-    , childrenRelations
-    , muddyChild0
-    , muddyChild1
-    , muddyChild2
-    , isMuddy0
-    , isMuddy1
-    , isMuddy2
-    , knowWhether
-    , muddyAfter
-    , atLeastOneMuddy
-    , nobodyKnows
-    , somebodyKnows
-    , findMuddyNumber
-    ) where
+module ThreeMuddyChildren where
 
 import ModelChecker
 
@@ -52,9 +36,6 @@ isMuddy0, isMuddy1, isMuddy2 :: Proposition
 isMuddy0 = 0
 isMuddy1 = 1
 isMuddy2 = 2
-
-knowWhether :: Agent -> Formula -> Formula
-knowWhether i f = Dis [ Kno i f, Kno i (Neg f) ]
 
 -- returns the model in which a announcements have been made
 muddyAfter :: Int -> Model
