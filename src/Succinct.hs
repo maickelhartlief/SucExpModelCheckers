@@ -28,20 +28,22 @@ data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
 -- a set of propositions that are true
 type State = [Proposition]
 
+-- checks whether a formula is true given an list of true propositions
 boolIsTrue :: State -> Formula -> Bool
 boolIsTrue _  Top       = True
 boolIsTrue _  Bot       = False
 boolIsTrue s (P p)      = p `elem` s
 boolIsTrue a (Neg f)    = not $ boolIsTrue a f
-boolIsTrue a (Con fs)   = and (map (boolIsTrue a) fs)
-boolIsTrue a (Dis fs)   = or (map (boolIsTrue a) fs)
+boolIsTrue a (Con fs)   = all (boolIsTrue a) fs
+boolIsTrue a (Dis fs)   = any (boolIsTrue a) fs
 boolIsTrue a (Imp f g)  = not (boolIsTrue a f) || boolIsTrue a g
 boolIsTrue a (Bim f g)  = boolIsTrue a f == boolIsTrue a g
 
-
+-- a list with all possible states given a finite set of probabilities
 allStatesFor :: [Proposition] -> [State]
 allStatesFor = powerList
 
+-- whether a state is reachable from another state (first argument is full vocabulary)
 areConnected :: [Proposition] -> MenProg -> State -> State -> Bool
 -- areConnected mp  s1 s2 = s2 `elem` reachableFromHere mp s1
 
@@ -61,13 +63,9 @@ areConnected v (Cup (mp:rest)) s1 s2 = areConnected v mp s1 s2 || areConnected v
 areConnected _ (Cap []       ) _ _ = True
 areConnected v (Cap (mp:rest)) s1 s2 = areConnected v mp s1 s2 && areConnected v (Cap rest) s1 s2
 areConnected v (Inv mp       ) s1 s2 = areConnected v mp s2 s1
--- make testing from this?
--- example: areConnected [1,3,9] (Ass 9 Top) [1,3] [1,3,9] -- should be True
--- example: areConnected [1,3,9] (Seq [Ass 9 Top, Ass 1 Bot]) [1,3] [3,9] -- should be True
--- example: areConnected [1,3,9] (Cup [Ass 9 Top, Ass 1 Bot]) [1,3] [1,3,9] -- should be True
--- example: areConnected [1,3,9] (Cup [Ass 9 Top, Ass 1 Bot]) [1,3] [3] -- should be True
--- TODO: move these to tests/ and add some which are false
 
+-- returns all states that are reachable from a certain state in a mental program
+-- (first argument is full vocabulary)
 reachableFromHere :: [Proposition] -> MenProg -> State -> [State]
 reachableFromHere _ (Ass p f) s = if boolIsTrue s f
                                      then [sort $ union [p] s]

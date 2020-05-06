@@ -43,20 +43,23 @@ muddyAfter 0 = muddyModel
 muddyAfter 1 = muddyModel ! atLeastOneMuddy
 muddyAfter k = muddyAfter (k - 1) ! nobodyKnows
 
+-- formula of that at least 1 child is muddy
 atLeastOneMuddy :: Formula
 atLeastOneMuddy = Dis [P isMuddy0, P isMuddy1, P isMuddy2]
 
+-- formula that no agent knows its own muddiness
 nobodyKnows :: Formula
 nobodyKnows = Con [ Neg $ knowWhether muddyChild0 (P isMuddy0)
                   , Neg $ knowWhether muddyChild1 (P isMuddy1)
                   , Neg $ knowWhether muddyChild2 (P isMuddy2) ]
 
+-- formula that at least 1 agent knows whether their own muddiness
 somebodyKnows :: Formula
 somebodyKnows = Dis [ knowWhether muddyChild0 (P isMuddy0)
                     , knowWhether muddyChild1 (P isMuddy1)
                     , knowWhether muddyChild2 (P isMuddy2) ]
 
--- NOTE: make this even nicer
+-- finds amount of muddy children in a pointed model
 findMuddyNumber :: (Model,Int) -> Int
 findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOneMuddy, w) + 1 where
            loop (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! nobodyKnows, w) + 1

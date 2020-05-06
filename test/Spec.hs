@@ -6,9 +6,11 @@ import Test.Hspec
 import ModelChecker
 import ThreeMuddyChildren
 --import NMuddyChildren
+import Succinct
 
 main :: IO ()
 main = hspec $ do
+  -- tests isTrue
   describe "isTrue" $ do
     it "random testformula  and model 1" $
       (mod1, 0) |= form1 `shouldBe` True
@@ -18,6 +20,7 @@ main = hspec $ do
 
     it "random testformula  and model 3" $
       (mod3, 0) |= form3 `shouldBe` True
+  -- tests the threeMuddyChildren model with isTrue
   describe "muddyModel" $ do
     context "when child 2 is muddy" $ do
       it "child 0 knows" $
@@ -42,21 +45,44 @@ main = hspec $ do
                                     (Con [ P isMuddy0, P isMuddy1, P isMuddy2
                                          , Kno muddyChild0 (P isMuddy0)
                                          , Kno muddyChild1 (P isMuddy1)
-                                         , Kno muddyChild2 (P isMuddy2) ]))) where
- mod1 = Mo [(0, [pA]), (1, [])] [(me, [[0, 1]])]
- form1 = Con [P pA, Neg (Kno me (P pA))]
- mod2 = Mo [(0, [pA]), (1, [pA, pB]), (2, [])]
-           [(me, [[0, 1, 2]]), (jack, [[0], [1], [2]])]
- form2 = Neg (Kno me (Kno jack $ Dis [P pA, P pB]))
- mod3 = Mo [(0, [pA]), (1, [])] [(me, [[0, 1]]), (jack, [[0], [1]])]
- form3 = Con [ Kno jack (Dis [P pA, P pB])
+                                         , Kno muddyChild2 (P isMuddy2) ])))
+    -- tests areConnected with boolIsTrue
+    describe "areConnected" $ do
+      context "connected" $ do
+        it "example1" $
+          areConnected [1,3,9] (Ass 9 Top) [1,3] [1,3,9]
+          `shouldBe` True
+        it "example2" $
+          areConnected [1,3,9] (Seq [Ass 9 Top, Ass 1 Bot]) [1,3] [3,9]
+          `shouldBe` True
+        it "example3" $
+          areConnected [1,3,9] (Cup [Ass 9 Top, Ass 1 Bot]) [1,3] [1,3,9]
+          `shouldBe` True
+        it "example4" $
+          areConnected [1,3,9] (Cup [Ass 9 Top, Ass 1 Bot]) [1,3] [3]
+          `shouldBe` True
+
+-- some random test formulas
+form1, form2, form3 :: Formula
+form1 = Con [P pA, Neg (Kno me (P pA))]
+form2 = Neg (Kno me (Kno jack $ Dis [P pA, P pB]))
+form3 = Con [ Kno jack (Dis [P pA, P pB])
              , Neg $ Kno me (Kno jack (Dis [P pA, P pB])) ]
 
+-- some random test models
+mod1, mod2, mod3 :: Model
+mod1 = Mo [(0, [pA]), (1, [])] [(me, [[0, 1]])]
+mod2 = Mo [(0, [pA]), (1, [pA, pB]), (2, [])]
+          [(me, [[0, 1, 2]]), (jack, [[0], [1], [2]])]
+mod3 = Mo [(0, [pA]), (1, [])] [(me, [[0, 1]]), (jack, [[0], [1]])]
+
+-- some random propositions
 pA, pB, pC :: Proposition
 pA = 0
 pB = 1
 pC = 2
 
+-- some random agents
 me, herb, jack, supervisor :: Agent
 me = "Maickel"
 herb = "Herb"
