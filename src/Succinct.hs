@@ -12,10 +12,6 @@ import NMuddyChildren (powerList)
 
 
 -- Definitions of mental programs
--- NOTE: not sure how this works, so most of what i made this week is guesswork.
---       from the paper I got that mental programs can take other mental programs
---       as arguments, but also formulas, so I made the F case and made the rest
---       recursive.
 data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
              | Tst Formula             -- Test form
              | Seq [MenProg]           -- Execute forms sequencially
@@ -45,24 +41,21 @@ allStatesFor = powerList
 
 -- whether a state is reachable from another state (first argument is full vocabulary)
 areConnected :: [Proposition] -> MenProg -> State -> State -> Bool
--- areConnected mp  s1 s2 = s2 `elem` reachableFromHere mp s1
-
--- this is ugly, later we should use Data.Set or ensure States are always sorted when they are made/changed
-setEq :: (Ord a, Eq a) => [a] -> [a] -> Bool
-setEq xs ys = nub (sort xs) == nub (sort ys)
-
--- not sure is areConnected or a modified version of boolIsTrue should be used here.
 areConnected _ (Ass p f) s1 s2       = if boolIsTrue s1 f
                                          then union [p] s1 `setEq` s2
                                          else delete p s1 `setEq` s2
 areConnected _ (Tst f) s1 s2         = s1 == s2 && boolIsTrue s1 f
 areConnected _ (Seq []       ) s1 s2 = s1 == s2
 areConnected v (Seq (mp:rest)) s1 s2 = or [ areConnected v (Seq rest) s3 s2 | s3 <- reachableFromHere v mp s1 ]
-areConnected _ (Cup []       ) _ _ = False
+areConnected _ (Cup []       ) _ _   = False
 areConnected v (Cup (mp:rest)) s1 s2 = areConnected v mp s1 s2 || areConnected v (Cup rest) s1 s2
-areConnected _ (Cap []       ) _ _ = True
+areConnected _ (Cap []       ) _ _   = True
 areConnected v (Cap (mp:rest)) s1 s2 = areConnected v mp s1 s2 && areConnected v (Cap rest) s1 s2
 areConnected v (Inv mp       ) s1 s2 = areConnected v mp s2 s1
+
+-- this is ugly, later we should use Data.Set or ensure States are always sorted when they are made/changed
+setEq :: (Ord a, Eq a) => [a] -> [a] -> Bool
+setEq xs ys = nub (sort xs) == nub (sort ys)
 
 -- returns all states that are reachable from a certain state in a mental program
 -- (first argument is full vocabulary)
@@ -80,6 +73,45 @@ reachableFromHere _ (Cap []) s        = []
 reachableFromHere v (Cap (mp:rest)) s = intersect (reachableFromHere v mp s) (reachableFromHere v (Cap rest) s)
 reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnected v mp s' s ]
 
+data SuccinctModel = SMo [Proposition] Formula [(Agent, MenProg)] deriving (Eq,Ord,Show)
+
+-- isTrue for succinct models
+sucIsTrue :: (SuccinctModel, State) -> Formula -> Bool
+sucIsTrue _  Top       = True
+sucIsTrue _  Bot       = False
+sucIsTrue (_ ,s) (P p) = p `elem` s
+sucIsTrue a (Neg f)    = not $ sucIsTrue a f
+sucIsTrue a (Con fs)   = and (map (sucIsTrue a) fs)
+sucIsTrue a (Dis fs)   = or (map (sucIsTrue a) fs)
+sucIsTrue a (Imp f g)  = not (sucIsTrue a f) || sucIsTrue a g
+sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
+-- formula should be true in all states reachable from the actual state for the
+-- agent that are in the stateSpace of the model (checked for by checking if the
+-- state is also true for the formula given in the SuccinctModel)
+sucIsTrue (m@(SMo v fm rel), s) (Kno i f) =
+  all (\s' -> sucIsTrue (m,s') f and boolIsTrue s' fm) (reachableFromHere v (unsafeLookup i rel) s)
+sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (m ! f, s) g else True
+
+-- NOTE: doesn't work if haskell doesn't support function overloading, which i
+--       think is the case. Is there another way to be able to use the same
+--       shorthand for both versions of publicannouncements? classes maybe?
+-- shorthand for public announcement for sucinct models
+(!) :: SuccinctModel -> Formula -> SuccinctModel
+(!) = sucPublicAnnounce
+
+-- NOTE: copied from ModelChecker.hs. not modified yet
+sucPublicAnnounce :: SuccinctModel -> Formula -> SuccinctModel
+sucPublicAnnounce m@(SMo v _ rel) f = Mo newVal newRel where
+  newVal = [ (w,v) | (w,v) <- val, (m,w) |= f ] -- exercise: write with filter using fst or snd
+  newRel = [ (i, filter (/= []) $ prune parts) | (i,parts) <- rel ]
+  prune :: [[Int]] -> [[Int]]
+  prune [] = []
+  prune (ws:rest) = [ w | w <- ws, w `elem` map fst newVal ] : prune rest
+
+
+
+
+
 
 -- (Model,world) |= phi ???
 
@@ -87,7 +119,7 @@ reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnecte
 
 -- Model = (worlds, valuation, relation for each agent)
 
--- SuccintModel = (vocabulary, a boolean formula, mental program for each agent)
+-- SuccintModel = (vocabulary, a boolean unsafeLookup w valformula, mental program for each agent)
 
 -- data/type SuccintModel = ... -- see definition 8 in 2017 paper
 
@@ -95,12 +127,6 @@ reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnecte
 
 -- isTrue :: (SuccinctModel,State) -> Formula -> Bool
 -- interesting case: isTrue .. (K i phi) = ... using reachableFromHere!
-
-
-
--- suc2exp :: (SuccinctModel,State) -> (Model,World) -- 3.2.2 in 2017 paper
--- exp2suc :: ... -- 3.2.3 in 2017 paper
-
 
 --concat :: [[a]] -> [a]
 --concat [[1,2],[3,4,5]] == [1,2,3,4,5]

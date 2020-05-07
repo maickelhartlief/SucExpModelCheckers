@@ -66,12 +66,12 @@ isTrue a (Con fs)   = and (map (isTrue a) fs)
 isTrue a (Dis fs)   = or (map (isTrue a) fs)
 isTrue a (Imp f g)  = not (isTrue a f) || isTrue a g
 isTrue a (Bim f g)  = isTrue a f == isTrue a g
-isTrue (m@(Mo _ _),w) (Kno i f) =
+isTrue (m,w) (Kno i f) =
   all (\w' -> isTrue (m,w') f) (localState (m, w) i)
 isTrue (m, w) (Ann f g)  = if isTrue (m,w) f then isTrue (m ! f, w) g else True
 
 -- not sure anymore what this does.
--- It seems return the list of worlds that are reachable for the agent?
+-- returns worlds that are reachable for an agent from the actual world?
 localState :: (Model,Int) -> Agent -> [Int]
 localState (Mo _ rel,w) i = case filter (w `elem`) (unsafeLookup i rel) of
   []      -> error $ "agent " ++ i ++ " has no equivalence class"
