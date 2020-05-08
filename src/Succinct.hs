@@ -24,6 +24,9 @@ data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
 -- a set of propositions that are true
 type State = [Proposition]
 
+--  a Succinct representation of a model
+data SuccinctModel = SMo [Proposition] Formula [(Agent, MenProg)] deriving (Eq,Ord,Show)
+
 -- checks whether a formula is true given an list of true propositions
 boolIsTrue :: State -> Formula -> Bool
 boolIsTrue _  Top       = True
@@ -72,8 +75,6 @@ reachableFromHere v (Cup (mp:rest)) s = reachableFromHere v mp s ++ reachableFro
 reachableFromHere _ (Cap []) s        = []
 reachableFromHere v (Cap (mp:rest)) s = intersect (reachableFromHere v mp s) (reachableFromHere v (Cap rest) s)
 reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnected v mp s' s ]
-
-data SuccinctModel = SMo [Proposition] Formula [(Agent, MenProg)] deriving (Eq,Ord,Show)
 
 -- isTrue for succinct models
 sucIsTrue :: (SuccinctModel, State) -> Formula -> Bool
