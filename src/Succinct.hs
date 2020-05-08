@@ -89,48 +89,36 @@ sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
 -- agent that are in the stateSpace of the model (checked for by checking if the
 -- state is also true for the formula given in the SuccinctModel)
 sucIsTrue (m@(SMo v fm rel), s) (Kno i f) =
-  all (\s' -> sucIsTrue (m,s') f and boolIsTrue s' fm) (reachableFromHere v (unsafeLookup i rel) s)
-sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (m ! f, s) g else True
+  all (\s' -> sucIsTrue (m,s') f && boolIsTrue s' fm) (reachableFromHere v (unsafeLookup i rel) s)
+sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (sucPublicAnnounce m f, s) g else True
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i
 --       think is the case. Is there another way to be able to use the same
 --       shorthand for both versions of publicannouncements? classes maybe?
 -- shorthand for public announcement for sucinct models
-(!) :: SuccinctModel -> Formula -> SuccinctModel
-(!) = sucPublicAnnounce
+-- (!) :: SuccinctModel -> Formula -> SuccinctModel
+-- (!) = sucPublicAnnounce
 
--- NOTE: copied from ModelChecker.hs. not modified yet
+-- NOTE: doesn't work if typeOf doesn't work on self-made types
+-- (!) :: a -> Formula -> a
+-- (!) = if a `typeOf` Model then publicAnnounce
+--       else if a `typeOf` SuccinctModel then sucPublicAnnounce
+--       else error "only accepts Model or SuccinctModel"
+
+-- returns the new succinct model that results from having a public announcentmin a succinct model
 sucPublicAnnounce :: SuccinctModel -> Formula -> SuccinctModel
-sucPublicAnnounce m@(SMo v _ rel) f = Mo newVal newRel where
-  newVal = [ (w,v) | (w,v) <- val, (m,w) |= f ] -- exercise: write with filter using fst or snd
-  newRel = [ (i, filter (/= []) $ prune parts) | (i,parts) <- rel ]
-  prune :: [[Int]] -> [[Int]]
-  prune [] = []
-  prune (ws:rest) = [ w | w <- ws, w `elem` map fst newVal ] : prune rest
-
-
-
-
-
+sucPublicAnnounce (SMo v fm rel) f = SMo v newFm newRel where
+  newFm = Con [fm, f]
+  newRel = map applyF rel
+  applyF :: (Agent, MenProg) -> (Agent, MenProg)
+  applyF (a, mp) = (a, Cap [mp, Tst f])
 
 -- (Model,world) |= phi ???
 
 -- (SuccintModel,State)  |= phi  ??
 
--- Model = (worlds, valuation, relation for each agent)
-
--- SuccintModel = (vocabulary, a boolean unsafeLookup w valformula, mental program for each agent)
-
--- data/type SuccintModel = ... -- see definition 8 in 2017 paper
-
--- example: the succinct model for 3 muddy children
-
--- isTrue :: (SuccinctModel,State) -> Formula -> Bool
--- interesting case: isTrue .. (K i phi) = ... using reachableFromHere!
-
 --concat :: [[a]] -> [a]
 --concat [[1,2],[3,4,5]] == [1,2,3,4,5]
-
 
 -- reachableFromHere mp s = [ s' | s' <- allStates, areconnected mp s s' ]
 
@@ -138,8 +126,6 @@ sucPublicAnnounce m@(SMo v _ rel) f = Mo newVal newRel where
 
 --(p<-False ; r<- True)  [p,q]   [q,r]
 --         [q]methodsection
-
--- translate definitions of succinct models to Haskell
 
 --meetingnotes: discussion about whether allStates are needed to make reachableFromHere work for inv
 -- thesis: defining logics used from other papers and stuff. not question, method, results, but in terms of when things can be defined. bottomup approach? methodsection could be benchmarking methods and such

@@ -23,16 +23,18 @@ agentProg = [ (muddyChild0, Cup [Ass isMuddy0 Top, Ass isMuddy0 Bot])
             , (muddyChild1, Cup [Ass isMuddy1 Top, Ass isMuddy1 Bot])
             , (muddyChild2, Cup [Ass isMuddy2 Top, Ass isMuddy2 Bot]) ]
 
--- NOTE: suc! is a placeholder for now. public announcements return a Model,
---       and there is no version yet that returns a SuccinctModel
-
 -- returns the model in which a announcements have been made
 sucMuddyAfter :: Int -> SuccinctModel
 sucMuddyAfter 0 = sucMuddyModel
-sucMuddyAfter 1 = sucMuddyModel ! atLeastOneMuddy
-sucMuddyAfter k = sucMuddyAfter (k - 1) ! nobodyKnows
+sucMuddyAfter 1 = sucPublicAnnounce sucMuddyModel atLeastOneMuddy
+sucMuddyAfter k = sucPublicAnnounce (sucMuddyAfter (k - 1)) nobodyKnows
 
 -- finds amount of muddy children in a pointed succinct model
-findMuddyNumber :: (SuccinctModel,State) -> Int
-findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOneMuddy, w) + 1 where
-           loop (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! nobodyKnows, w) + 1
+-- NOTE: currently always 1
+sucFindMuddyNumber :: (SuccinctModel,State) -> Int
+sucFindMuddyNumber (m, s) = if sucIsTrue (m, s) somebodyKnows
+                          then 0
+                          else loop (sucPublicAnnounce m atLeastOneMuddy, s) + 1 where
+           loop (m, s) = if sucIsTrue (m, s) somebodyKnows
+                          then 0
+                          else loop (sucPublicAnnounce m nobodyKnows, s) + 1
