@@ -6,7 +6,7 @@ import ThreeMuddyChildren
 
 -- Muddy Children
 sucMuddyModel :: SuccinctModel
-sucMuddyModel =  SMo vocabulary muddyForm agentProg
+sucMuddyModel =  SMo vocabulary muddyForm [] agentProg
 
 -- all probabilities
 vocabulary :: [Proposition]
@@ -14,7 +14,6 @@ vocabulary = [isMuddy0, isMuddy1, isMuddy2]
 
 -- formula to generate worldspace
 muddyForm :: Formula
--- muddyForm = Dis [P isMuddy0, P isMuddy1, P isMuddy2]
 muddyForm = Top
 
 -- all children and what they know represented by a mental program

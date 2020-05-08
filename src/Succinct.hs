@@ -24,8 +24,13 @@ data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
 -- a set of propositions that are true
 type State = [Proposition]
 
---  a Succinct representation of a model
-data SuccinctModel = SMo [Proposition] Formula [(Agent, MenProg)] deriving (Eq,Ord,Show)
+-- a Succinct representation of a model
+-- third parameter [Formula]: announced formulas, listed with the newest announcement first
+data SuccinctModel = SMo [Proposition] Formula [Formula] [(Agent, MenProg)] deriving (Eq,Ord,Show)
+
+statesOf :: SuccinctModel -> [State]
+statesOf (SMo vocab betaM []     rel) = filter (`boolIsTrue` betaM) (allStatesFor vocab)
+statesOf m@(SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (m,s) f) (statesOf (SMo vocab betaM fs rel))
 
 -- checks whether a formula is true given an list of true propositions
 boolIsTrue :: State -> Formula -> Bool
@@ -89,8 +94,8 @@ sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
 -- formula should be true in all states reachable from the actual state for the
 -- agent that are in the stateSpace of the model (checked for by checking if the
 -- state is also true for the formula given in the SuccinctModel)
-sucIsTrue (m@(SMo v fm rel), s) (Kno i f) =
-  all (\s' -> sucIsTrue (m,s') f && boolIsTrue s' fm) (reachableFromHere v (unsafeLookup i rel) s)
+sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
+  all (\s' -> sucIsTrue (m,s') f) (reachableFromHere v (unsafeLookup i rel) s `intersect` statesOf m)
 sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (sucPublicAnnounce m f, s) g else True
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i
@@ -108,11 +113,7 @@ sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (sucPublicAnno
 
 -- returns the new succinct model that results from having a public announcentmin a succinct model
 sucPublicAnnounce :: SuccinctModel -> Formula -> SuccinctModel
-sucPublicAnnounce (SMo v fm rel) f = SMo v newFm newRel where
-  newFm = Con [fm, f]
-  newRel = map applyF rel
-  applyF :: (Agent, MenProg) -> (Agent, MenProg)
-  applyF (a, mp) = (a, Cap [mp, Tst f])
+sucPublicAnnounce (SMo v fm fs rel) f = SMo v fm (f:fs) rel
 
 -- (Model,world) |= phi ???
 
