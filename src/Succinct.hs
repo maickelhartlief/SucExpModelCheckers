@@ -29,8 +29,9 @@ type State = [Proposition]
 data SuccinctModel = SMo [Proposition] Formula [Formula] [(Agent, MenProg)] deriving (Eq,Ord,Show)
 
 statesOf :: SuccinctModel -> [State]
-statesOf (SMo vocab betaM []     rel) = filter (`boolIsTrue` betaM) (allStatesFor vocab)
-statesOf m@(SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (m,s) f) (statesOf (SMo vocab betaM fs rel))
+statesOf (SMo vocab betaM []     _) = filter (`boolIsTrue` betaM) (allStatesFor vocab)
+statesOf m@(SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (oldModel,s) f) (statesOf oldModel) where
+  oldModel = SMo vocab betaM fs rel
 
 -- checks whether a formula is true given an list of true propositions
 boolIsTrue :: State -> Formula -> Bool

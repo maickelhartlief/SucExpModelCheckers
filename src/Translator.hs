@@ -5,8 +5,8 @@ import Succinct
 
 
 suc2exp :: (SuccinctModel, State) -> (Model, World)
-suc2exp (sm@(SMo v f _ sucRel), s) = (Mo worldspace rel, w) where
-  worldspace = makeWorlds v f
+suc2exp (sm@(SMo v f announcedFs sucRel), s) = (Mo worldspace rel, w) where
+  worldspace = makeWorlds v f -- zip [0..] (statesOf sm)
   rel = makeRelations sucRel worldspace
   w = getCurWorld worldspace s
 

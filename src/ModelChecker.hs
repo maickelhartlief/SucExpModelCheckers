@@ -53,7 +53,7 @@ worldsOf :: Model -> [World]
 worldsOf (Mo val _rel) = map fst val
 
 -- shorthand for funstion: isTrue
-(|=) :: (Model,Int) -> Formula -> Bool
+(|=) :: (Model,World) -> Formula -> Bool
 (|=) = isTrue
 
 -- returns whether a formula is true in a pointed model (a perticular world in a model)
