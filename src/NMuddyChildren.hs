@@ -5,6 +5,7 @@ import Data.List (sortOn,groupBy,sort,delete)
 import ModelChecker
 
 -- n children, of which m are muddy
+-- returns with a list of all possible actual worlds
 muddyModelFor :: Int -> Int -> (Model,[Int])
 muddyModelFor n m = ( Mo worlds relations, mWorlds) where
   worlds = makeMuddyWorlds n
@@ -38,10 +39,6 @@ makeRelations worlds n = sort
                        $ worlds where
   observationAt w = delete n $ snd w
 
--- makes list of all the propositions in the model (1 = isMuddyA, 2 = isMuddyB, etc.)
-makePropositions :: Int -> [Proposition]
-makePropositions n = [0..(n - 1)]
-
 -- gets a list of all worlds in which exactly m children are muddy
 getMMuddyWorlds :: [ (Int, [Proposition]) ] -> Int -> [Int]
 getMMuddyWorlds [] _ = []
@@ -61,7 +58,7 @@ findMuddyNumbers (m@(Mo _ rel), w:rest) =
       curNumber = findMuddyNumber (length rel) (m, w)
       nextNumber = findMuddyNumbers (m, rest)
 
--- finds the number of muddy children in a model with n children
+-- finds the number of announcements necessary in a model with n children
 findMuddyNumber :: Int -> (Model,Int) -> Int
 findMuddyNumber n (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! atLeastOneMuddy n, w) + 1 where
            loop (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! nobodyKnows n, w) + 1
