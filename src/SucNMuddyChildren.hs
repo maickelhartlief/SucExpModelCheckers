@@ -20,11 +20,19 @@ makeSucRels :: Int -> [ (Agent, MenProg) ]
 makeSucRels n = [ ("child" ++ show k, Cup [Ass k Top, Ass k Bot]) | k <- [0 .. (n - 1)]]
 
 -- makes all viable states of n children in which m are muddy
--- NOTE: very inefficient bfor bigger inputs because of powerlist
+-- NOTE: very inefficient for bigger inputs because of powerlist.
+--       an alternative might be randomly picking m items from the vocabulary
 makeStates :: [Proposition] -> Int -> [State]
 makeStates vocabulary m = [k | k <- powerList vocabulary, length k == m]
 
 -- finds the number of announcements necessary for the muddy children to know their own muddiness
 sucFindMuddyNumber :: Int -> (SuccinctModel,State) -> Int
-sucFindMuddyNumber n (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n) then 0 else loop (sucPublicAnnounce sucMod (atLeastOneMuddy n), s) + 1 where
-           loop (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n) then 0 else loop (sucPublicAnnounce sucMod (nobodyKnows n), s) + 1
+sucFindMuddyNumber n (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n)
+                                    then 0
+                                    else loop (sucPublicAnnounce sucMod (atLeastOneMuddy n), s) + 1 where
+ loop (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n)
+                      then 0
+                      else loop (sucPublicAnnounce sucMod (nobodyKnows n), s) + 1
+
+sucMoutofN :: Int -> Int -> Int
+sucMoutofN m n = sucFindMuddyNumber n (sucMuddyModelFor n m)

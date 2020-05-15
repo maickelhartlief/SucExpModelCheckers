@@ -16,8 +16,6 @@ agentProg = [ (muddyChild0, Cup [Ass isMuddy0 Top, Ass isMuddy0 Bot])
             , (muddyChild1, Cup [Ass isMuddy1 Top, Ass isMuddy1 Bot])
             , (muddyChild2, Cup [Ass isMuddy2 Top, Ass isMuddy2 Bot]) ]
 
--- TODO: succinct model for n children
-
 -- returns the model in which a announcements have been made
 sucMuddyAfter :: Int -> SuccinctModel
 sucMuddyAfter 0 = sucMuddyModel
