@@ -5,11 +5,18 @@ import Test.Hspec
 --import Main
 import ModelChecker
 import ThreeMuddyChildren
+import SucNMuddyChildren
 --import NMuddyChildren
 import Succinct
 
 main :: IO ()
 main = hspec $ do
+  describe "sucFindMuddyNumber n (sucMuddyModelFor n n) == n -1" $ do
+    it "n = 4" $
+      (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 4 == 4
+    it "n = 5" $
+      (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 5 == 5
+
   -- tests isTrue
   describe "isTrue" $ do
     it "random testformula  and model 1" $

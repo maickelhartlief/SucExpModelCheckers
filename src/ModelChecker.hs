@@ -20,6 +20,12 @@ data Formula = Top                     -- True
              deriving (Show,Eq,Ord)
 --    \phi  ::= \top | \bot | p | \phi ^ \phi
 
+class UpdateAble a where
+  (!) :: a -> Formula -> a
+
+instance UpdateAble Model where
+  (!) = publicAnnounce
+
 -- Assignments are a list of propositions that are true in a world
 type Assignment = [Proposition]
 
@@ -78,10 +84,6 @@ localState (Mo _ rel,w) i = case filter (w `elem`) (unsafeLookup i rel) of
   [set]   -> set
   -- at least 2 elements:
   (_:_:_) -> error $ "agent " ++ i ++ " has more than one equivalence class: " ++ show (unsafeLookup i rel)
-
--- shorthand for function: publicAnnounce
-(!) :: Model -> Formula -> Model
-(!) =  publicAnnounce
 
 -- returns the new model that results from having a public announcement in a model
 publicAnnounce :: Model -> Formula -> Model

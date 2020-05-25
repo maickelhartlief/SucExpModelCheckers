@@ -97,14 +97,17 @@ sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
 -- state is also true for the formula given in the SuccinctModel)
 sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
   all (\s' -> sucIsTrue (m,s') f) (reachableFromHere v (unsafeLookup i rel) s `intersect` statesOf m)
-sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f then sucIsTrue (sucPublicAnnounce m f, s) g else True
+sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f
+                                then sucIsTrue (sucPublicAnnounce m f, s) g
+                                else True
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i
 --       think is the case. Is there another way to be able to use the same
 --       shorthand for both versions of publicannouncements? classes maybe?
 -- shorthand for public announcement for sucinct models
--- (!) :: SuccinctModel -> Formula -> SuccinctModel
--- (!) = sucPublicAnnounce
+instance UpdateAble SuccinctModel where
+  (!) = sucPublicAnnounce
+
 
 -- NOTE: doesn't work if typeOf doesn't work on self-made types
 -- (!) :: a -> Formula -> a
