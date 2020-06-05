@@ -16,6 +16,8 @@ main = hspec $ do
       (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 4 == 4
     it "n = 5" $
       (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 5 == 5
+    it "n = 6" $
+      (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 6 == 6
 
   -- tests isTrue
   describe "isTrue" $ do

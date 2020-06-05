@@ -67,4 +67,34 @@ makeFormula vocabulary worlds = Dis [ Con $ (map P a) ++ (map (Neg . P) (vocabul
 makeSucRelations :: [(Agent, MenProg)]
 makeSucRelations = undefined
 
--- NOTE: AT LEAST AS MANY LATEXLINES AS CODELINES :C
+-- by symposium: preliminary results (sucinct vs. symbolic&explicit) not entire thesis yet :)
+-- week after symposium: full thesis draft!
+-- final version whenever-ish (month later?)
+-- system: translator implement todo's. undefinfed. make faster!! (allstatesfor and other things) (using data.map instead of lists of tuples) (maybe do intermediate checks to prune earlier. probably wouldn't work) (make know whether primitive)
+-- run profiler to see what functions need speeding up. ^
+-- system optional after deadline: compatible with SMCDEL
+-- benchmark changes from now on. "this change changed speed from X to Y."
+-- make benchmark automatic. (as far as possible) results should be (easily) reproducable (SMCDEL has example)
+-- benchmark SMCDEL to get an idea (and a graph)
+
+-- fix all warnings
+
+--   hlint --report src/ && firefox report.html
+
+--   stack test --profile --test-arguments "--match sucFindMuddyNumber"
+{-
+Fri Jun  5 14:56 2020 Time and Allocation Profiling Report  (Final)
+
+   my-project-test +RTS -N -p -RTS --match sucFindMuddyNumber
+
+total time  =        2.76 secs   (11041 ticks @ 1000 us, 4 processors)
+total alloc = 7,458,474,144 bytes  (excludes profiling overheads)
+
+COST CENTRE       MODULE       SRC                                 %time %alloc
+
+reachableFromHere Succinct     src/Succinct.hs:(77,1)-(88,93)       50.9   88.3
+sucIsTrue         Succinct     src/Succinct.hs:(92,1)-(108,41)      25.5    0.0
+unsafeLookup      ModelChecker src/ModelChecker.hs:(53,1)-(55,22)   16.1    0.8
+isStateOf         Succinct     src/Succinct.hs:(37,1)-(39,35)        5.6    9.0
+sucIsTrue.\       Succinct     src/Succinct.hs:105:15-32             0.8    1.8
+-}

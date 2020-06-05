@@ -48,6 +48,14 @@ boolIsTrue a (Bim f g)  = boolIsTrue a f == boolIsTrue a g
 allStatesFor :: [Proposition] -> [State]
 allStatesFor = powerList
 
+
+--
+isStateOf :: State -> SuccinctModel -> Bool
+isStateOf s (SMo _     betaM []     _  ) = s `boolIsTrue` betaM
+isStateOf s (SMo vocab betaM (f:fs) rel) =
+   sucIsTrue (oldModel,s) f && (s `isStateOf` oldModel) where
+     oldModel = SMo vocab betaM fs rel
+
 -- whether a state is reachable from another state (first argument is full vocabulary)
 areConnected :: [Proposition] -> MenProg -> State -> State -> Bool
 areConnected _ (Ass p f) s1 s2       = if boolIsTrue s1 f
@@ -71,15 +79,15 @@ setEq xs ys = nub (sort xs) == nub (sort ys)
 reachableFromHere :: [Proposition] -> MenProg -> State -> [State]
 reachableFromHere _ (Ass p f) s = if boolIsTrue s f
                                      then [sort $ union [p] s]
-                                     else [sort $ delete p s]
+                                     else [delete p s]
 reachableFromHere _ (Tst f) s         = [ s | boolIsTrue s f ] -- if boolIsTrue s f then [s] else []
 reachableFromHere _ (Seq []) s        = [ s ]
 reachableFromHere v (Seq (mp:rest)) s = concat [ reachableFromHere v (Seq rest) s' | s' <- reachableFromHere v mp s ]
                                      -- concatMap (reachableFromHere v (Seq rest)) (reachableFromHere v mp s)
 reachableFromHere _ (Cup []) s        = []
-reachableFromHere v (Cup (mp:rest)) s = reachableFromHere v mp s ++ reachableFromHere v (Cup rest) s
+reachableFromHere v (Cup (mp:rest)) s = nub $ reachableFromHere v mp s ++ reachableFromHere v (Cup rest) s
 reachableFromHere _ (Cap []) s        = []
-reachableFromHere v (Cap (mp:rest)) s = intersect (reachableFromHere v mp s) (reachableFromHere v (Cap rest) s)
+reachableFromHere v (Cap (mp:rest)) s = intersect (reachableFromHere v (Cap rest) s) (reachableFromHere v mp s)
 reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnected v mp s' s ]
 
 -- isTrue for succinct models
@@ -88,25 +96,30 @@ sucIsTrue _  Top       = True
 sucIsTrue _  Bot       = False
 sucIsTrue (_ ,s) (P p) = p `elem` s
 sucIsTrue a (Neg f)    = not $ sucIsTrue a f
-sucIsTrue a (Con fs)   = and (map (sucIsTrue a) fs)
-sucIsTrue a (Dis fs)   = or (map (sucIsTrue a) fs)
+sucIsTrue a (Con fs)   = all (sucIsTrue a) fs
+sucIsTrue a (Dis fs)   = any (sucIsTrue a) fs
 sucIsTrue a (Imp f g)  = not (sucIsTrue a f) || sucIsTrue a g
 sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
 -- formula should be true in all states reachable from the actual state for the
 -- agent that are in the stateSpace of the model (checked for by checking if the
 -- state is also true for the formula given in the SuccinctModel)
+--sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
+--  all (\s' -> sucIsTrue (m,s') f) (reachableFromHere v (unsafeLookup i rel) s `intersect` statesOf m)
 sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
-  all (\s' -> sucIsTrue (m,s') f) (reachableFromHere v (unsafeLookup i rel) s `intersect` statesOf m)
+   all
+    (\s' -> sucIsTrue (m,s') f)
+    (filter (`isStateOf` m) $ reachableFromHere v (unsafeLookup i rel) s)
 sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f
                                 then sucIsTrue (sucPublicAnnounce m f, s) g
                                 else True
+
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i
 --       think is the case. Is there another way to be able to use the same
 --       shorthand for both versions of publicannouncements? classes maybe?
 -- shorthand for public announcement for sucinct models
 instance UpdateAble SuccinctModel where
-  (!) = sucPublicAnnounce
+   (!) = sucPublicAnnounce
 
 
 -- NOTE: doesn't work if typeOf doesn't work on self-made types
