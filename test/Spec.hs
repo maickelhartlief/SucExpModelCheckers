@@ -1,12 +1,9 @@
 --module Spec where
 
 import Test.Hspec
---import Test.QuickCheck
---import Main
 import ModelChecker
 import ThreeMuddyChildren
 import SucNMuddyChildren
---import NMuddyChildren
 import Succinct
 
 main :: IO ()

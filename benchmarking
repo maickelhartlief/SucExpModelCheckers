@@ -1,0 +1,16 @@
+	Fri Jun 12 13:12 2020 Time and Allocation Profiling Report  (Final)
+
+	   my-project-test +RTS -N -p -RTS --match sucFindMuddyNumber
+
+	total time  =       92.17 secs   (368699 ticks @ 1000 us, 4 processors)
+	total alloc = 413,799,332,984 bytes  (excludes profiling overheads)
+
+COST CENTRE       MODULE       SRC                              %time %alloc
+
+reachableFromHere Succinct     src/Succinct.hs:(82,1)-(93,93)    51.7   90.6
+sucIsTrue         Succinct     src/Succinct.hs:(97,1)-(114,95)   24.6    0.0
+unsafeLookup      ModelChecker src/ModelChecker.hs:55:1-68       17.3    0.7
+isStateOf         Succinct     src/Succinct.hs:(56,1)-(59,38)     5.0    7.2
+sucIsTrue.\       Succinct     src/Succinct.hs:112:13-30          0.7    1.5
+
+

@@ -3,7 +3,7 @@ module Translator where
 import ModelChecker
 import Succinct
 import NMuddyChildren (powerList)
-import Data.List ((\\), sort, nub)
+import Data.List ((\\), sort, nub, elem, notElem, union, intersect)
 
 
 -- translates from a succinct model to an explicit model
@@ -34,24 +34,45 @@ getCurWorld (world:rest) state = if snd world == state
                                   else getCurWorld rest state
 -- getCurWorld worlds state = unsafeLookup state $ map swap worlds
 
--- checks whether model has only worlds with unique valuations
-hasUniqueValuations :: Model -> Bool
-hasUniqueValuations = undefined
 
 -- for identical worlds, add a new proposition to make them unique
 -- definition 10 in short paper. bruteforcing this by just adding a proposition for every (non-unique) world
 -- definition for every world, but this will increase size of model for every translation. so do only for identical worlds
-addAtomsToEnsureUniqueValuations :: Model -> Model
-addAtomsToEnsureUniqueValuations = undefined
+-- NOTE: assumes ordered worldspace!
+-- NOTE: doesn't fully update vocab. only the first extra proposition
+ensureUniqueValuations :: [Proposition] -> [(World, Assignment)] -> ([Proposition], [(World, Assignment)])
+ensureUniqueValuations vocab [] = (vocab, [])
+ensureUniqueValuations vocab (w:rest) = if snd w == snd (head rest)
+                          then (vocab ++ [newProp], newWorld w
+                               ++ newWorld (head rest)
+                               ++ snd (ensureUniqueValuations (vocab ++ [newProp]) (tail rest)))
+                          else (fst ensureRest ++ [newProp], snd ensureRest) where
+                            ensureRest = ensureUniqueValuations vocab rest
+                            newProp = last vocab + 1
+                            newWorld :: (World, Assignment) -> [(World, Assignment)]
+                            newWorld world = [(fst world, snd world ++ [newProp])]
+
+-- the next 2 functions are used to test ensureUniqueValuations.
+uniqueTestVocabulary :: [Proposition]
+uniqueTestVocabulary = [0, 1, 2, 3, 4]
+
+uniqueTestWorldspace :: [(World, Assignment)]
+uniqueTestWorldspace = [ (0, [0, 1, 2])
+                       , (1, [0, 1, 2])
+                       , (2, [3, 4])
+                       , (3, [4])
+                       , (4, [4]) ]
 
 -- translates from a explicit model to a succinct model
 -- precondition: the given model has unique valuations, i.e. no two worlds satisfy the same atoms.
 exp2suc :: (Model, World) -> (SuccinctModel, State)
-exp2suc (Mo worlds _, world) = (SMo v f [] sucRel, s) where
-  v = makeVocabulary worlds
-  f = makeFormula v worlds
-  sucRel = makeSucRelations
+exp2suc (Mo worlds rel, world) = (SMo v f [] sucRel, s) where
+  v = fst space
+  f = makeFormula space
+  sucRel = makeSucRelations worlds rel
   s = getCurState worlds world
+  space :: ([Proposition], [(World, Assignment)])
+  space = ensureUniqueValuations (makeVocabulary worlds) worlds
 
 getCurState :: [(World, Assignment)] -> World -> State
 getCurState worlds world = unsafeLookup world worlds
@@ -61,11 +82,17 @@ makeVocabulary worlds = sort $ nub $ concatMap snd worlds
 
 -- make sure to apply addAtomsToEnsureUniqueValuations before this.
 -- use simplify function on this (can be taken from SMCDEL)
-makeFormula :: [Proposition] -> [(World,Assignment)] -> Formula
-makeFormula vocabulary worlds = Dis [ Con $ map P a ++ map (Neg . P) (vocabulary \\ a) | (_,a) <- worlds ]
+makeFormula :: ([Proposition], [(World,Assignment)]) -> Formula
+makeFormula (vocabulary, worlds) = Dis [ Con $ map P a ++ map (Neg . P) (vocabulary \\ a) | (_,a) <- worlds ]
 
-makeSucRelations :: [(Agent, MenProg)]
-makeSucRelations = undefined
+makeSucRelations :: [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
+makeSucRelations worldspace ((ag, rel):rest) = (ag, makeMenProg rel) : makeSucRelations worldspace rest where
+  makeMenProg :: [[World]] -> MenProg
+  -- TODO: related1 and related2 should be every pair the list of worlds
+  -- TODO: sucesfully make every p in xOr list into 2 elements "Ass p Top, Ass p Bot" in that list
+  makeMenProg (related:rest) = Cap map (\p -> [Cup [Ass p Top, Ass p Bot]) (xOr (unsafeLookup related1 worldspace) (unsafeLookup related2 worldspace)) where
+    xOr :: [Proposition] -> [Proposition] -> [Proposition]
+    xOr w1 w2 = [p | p <- w1 `union` w2, p `notElem` (w1 `intersect` w2)]
 
 -- by symposium: preliminary results (sucinct vs. symbolic&explicit) not entire thesis yet :)
 -- week after symposium: full thesis draft!
