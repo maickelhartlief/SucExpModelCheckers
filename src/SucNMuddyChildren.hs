@@ -29,10 +29,10 @@ makeStates vocabulary m = [k | k <- powerList vocabulary, length k == m]
 sucFindMuddyNumber :: Int -> (SuccinctModel,State) -> Int
 sucFindMuddyNumber n (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n)
                                     then 0
-                                    else loop (sucPublicAnnounce sucMod (atLeastOneMuddy n), s) + 1 where
- loop (sucMod, s) = if sucIsTrue (sucMod, s) (somebodyKnows n)
-                      then 0
-                      else loop (sucPublicAnnounce sucMod (nobodyKnows n), s) + 1
+                                    else loop (sucPublicAnnounce sucMod (atLeastOneMuddy n)) + 1 where
+ loop newSucMod = if sucIsTrue (newSucMod, s) (somebodyKnows n)
+                  then 0
+                  else loop (sucPublicAnnounce newSucMod (nobodyKnows n)) + 1
 
 sucMoutofN :: Int -> Int -> Int
 sucMoutofN m n = sucFindMuddyNumber n (sucMuddyModelFor n m)

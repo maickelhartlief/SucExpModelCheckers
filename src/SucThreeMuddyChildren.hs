@@ -26,9 +26,9 @@ sucMuddyAfter k = sucPublicAnnounce (sucMuddyAfter (k - 1)) nobodyKnows
 -- NOTE: currently always 1
 sucFindMuddyNumber :: (SuccinctModel,State) -> Int
 sucFindMuddyNumber (m, s) | sucIsTrue (m, s) somebodyKnows = 0
-                          | sucIsTrue (m, s) atLeastOneMuddy = loop (sucPublicAnnounce m atLeastOneMuddy, s) + 1
+                          | sucIsTrue (m, s) atLeastOneMuddy = loop (sucPublicAnnounce m atLeastOneMuddy) + 1
                           | otherwise = error "if nobody is muddy then we cannot make any announcement."
                             where
-                            loop (m, s) = if sucIsTrue (m, s) somebodyKnows
+                            loop newM = if sucIsTrue (newM, s) somebodyKnows
                                             then 0
-                                            else loop (sucPublicAnnounce m nobodyKnows, s) + 1
+                                            else loop (sucPublicAnnounce newM nobodyKnows) + 1

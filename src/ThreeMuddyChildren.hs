@@ -61,5 +61,5 @@ somebodyKnows = Dis [ knowWhether muddyChild0 (P isMuddy0)
 
 -- finds amount of muddy children in a pointed model
 findMuddyNumber :: (Model,Int) -> Int
-findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOneMuddy, w) + 1 where
-           loop (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! nobodyKnows, w) + 1
+findMuddyNumber (m,w) = if (m,w) |= somebodyKnows then 0 else loop (m ! atLeastOneMuddy) + 1 where
+           loop newM = if (newM,w) |= somebodyKnows then 0 else loop (newM ! nobodyKnows) + 1

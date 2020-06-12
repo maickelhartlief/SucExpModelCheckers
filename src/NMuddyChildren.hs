@@ -35,7 +35,7 @@ makeRelations :: [ (Int, [Proposition]) ] -> Int -> [[Int]]
 makeRelations worlds n = sort
                        . map (sort . map fst)
                        . groupBy (\w1 w2 -> observationAt w1 == observationAt w2)
-                       . sortOn (observationAt)
+                       . sortOn observationAt
                        $ worlds where
   observationAt w = delete n $ snd w
 
@@ -60,8 +60,8 @@ findMuddyNumbers (m@(Mo _ rel), w:rest) =
 
 -- finds the number of announcements necessary in a model with n children
 findMuddyNumber :: Int -> (Model,Int) -> Int
-findMuddyNumber n (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! atLeastOneMuddy n, w) + 1 where
-           loop (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! nobodyKnows n, w) + 1
+findMuddyNumber n (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! atLeastOneMuddy n) + 1 where
+           loop newM = if (newM,w) |= somebodyKnows n then 0 else loop (newM ! nobodyKnows n) + 1
 
 -- formula of whether at least 1 of n children are muddy
 atLeastOneMuddy :: Int -> Formula

@@ -21,8 +21,8 @@ makeWorlds vocab form = zip [0..] [w | w <- powerList vocab,  boolIsTrue w form]
 makeExpRelations :: [Proposition] -> [(Agent, MenProg)] -> [(World, Assignment)] -> [(Agent, [[World]])]
 makeExpRelations vocab relations worlds = [ (fst r, ass r worlds) | r <- relations ] where
   ass :: (Agent, MenProg) -> [(World, Assignment)] -> [[World]]
-  ass (a,mp) []     = []
-  ass (a,mp) (w:ws) = [ fst w : map fst vs ] ++ ass (a,mp) rest where
+  ass _ []     = []
+  ass (a,mp) (w:ws) = (fst w : map fst vs) : ass (a,mp) rest where
     vsStates = reachableFromHere vocab mp (snd w)
     vs   = filter (\wa -> snd wa `elem`    vsStates) ws
     rest = filter (\wa -> snd wa `notElem` vsStates) ws
@@ -47,7 +47,7 @@ addAtomsToEnsureUniqueValuations = undefined
 -- translates from a explicit model to a succinct model
 -- precondition: the given model has unique valuations, i.e. no two worlds satisfy the same atoms.
 exp2suc :: (Model, World) -> (SuccinctModel, State)
-exp2suc (Mo worlds expRel, world) = (SMo v f [] sucRel, s) where
+exp2suc (Mo worlds _, world) = (SMo v f [] sucRel, s) where
   v = makeVocabulary worlds
   f = makeFormula v worlds
   sucRel = makeSucRelations
@@ -62,7 +62,7 @@ makeVocabulary worlds = sort $ nub $ concatMap snd worlds
 -- make sure to apply addAtomsToEnsureUniqueValuations before this.
 -- use simplify function on this (can be taken from SMCDEL)
 makeFormula :: [Proposition] -> [(World,Assignment)] -> Formula
-makeFormula vocabulary worlds = Dis [ Con $ (map P a) ++ (map (Neg . P) (vocabulary \\ a)) | (w,a) <- worlds ]
+makeFormula vocabulary worlds = Dis [ Con $ map P a ++ map (Neg . P) (vocabulary \\ a) | (_,a) <- worlds ]
 
 makeSucRelations :: [(Agent, MenProg)]
 makeSucRelations = undefined
@@ -77,9 +77,9 @@ makeSucRelations = undefined
 -- make benchmark automatic. (as far as possible) results should be (easily) reproducable (SMCDEL has example)
 -- benchmark SMCDEL to get an idea (and a graph)
 
--- fix all warnings
+--[DONE] !!! fix all warnings
 
---   hlint --report src/ && firefox report.html
+--[DONE] hlint --report src/ && firefox report.html
 
 --   stack test --profile --test-arguments "--match sucFindMuddyNumber"
 {-

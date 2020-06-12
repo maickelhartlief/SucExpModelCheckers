@@ -30,7 +30,7 @@ data SuccinctModel = SMo [Proposition] Formula [Formula] [(Agent, MenProg)] deri
 
 statesOf :: SuccinctModel -> [State]
 statesOf (SMo vocab betaM []     _) = filter (`boolIsTrue` betaM) (allStatesFor vocab)
-statesOf m@(SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (oldModel,s) f) (statesOf oldModel) where
+statesOf (SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (oldModel,s) f) (statesOf oldModel) where
   oldModel = SMo vocab betaM fs rel
 
 -- checks whether a formula is true given an list of true propositions
@@ -43,6 +43,8 @@ boolIsTrue a (Con fs)   = all (boolIsTrue a) fs
 boolIsTrue a (Dis fs)   = any (boolIsTrue a) fs
 boolIsTrue a (Imp f g)  = not (boolIsTrue a f) || boolIsTrue a g
 boolIsTrue a (Bim f g)  = boolIsTrue a f == boolIsTrue a g
+boolIsTrue _ (Kno _ _) = error "This is not a boolean formula"
+boolIsTrue _ (Ann _ _) = error "This is not a boolean formula"
 
 -- a list with all possible states given a finite set of probabilities
 allStatesFor :: [Proposition] -> [State]
@@ -84,10 +86,10 @@ reachableFromHere _ (Tst f) s         = [ s | boolIsTrue s f ] -- if boolIsTrue 
 reachableFromHere _ (Seq []) s        = [ s ]
 reachableFromHere v (Seq (mp:rest)) s = concat [ reachableFromHere v (Seq rest) s' | s' <- reachableFromHere v mp s ]
                                      -- concatMap (reachableFromHere v (Seq rest)) (reachableFromHere v mp s)
-reachableFromHere _ (Cup []) s        = []
+reachableFromHere _ (Cup []) _        = []
 reachableFromHere v (Cup (mp:rest)) s = nub $ reachableFromHere v mp s ++ reachableFromHere v (Cup rest) s
-reachableFromHere _ (Cap []) s        = []
-reachableFromHere v (Cap (mp:rest)) s = intersect (reachableFromHere v (Cap rest) s) (reachableFromHere v mp s)
+reachableFromHere _ (Cap []) _        = []
+reachableFromHere v (Cap (mp:rest)) s = reachableFromHere v (Cap rest) s `intersect` reachableFromHere v mp s
 reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnected v mp s' s ]
 
 -- isTrue for succinct models
@@ -109,9 +111,7 @@ sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
    all
     (\s' -> sucIsTrue (m,s') f)
     (filter (`isStateOf` m) $ reachableFromHere v (unsafeLookup i rel) s)
-sucIsTrue (m, s) (Ann f g)  = if sucIsTrue (m,s) f
-                                then sucIsTrue (sucPublicAnnounce m f, s) g
-                                else True
+sucIsTrue (m, s) (Ann f g)  = not (sucIsTrue (m, s) f) || sucIsTrue(sucPublicAnnounce m f, s) g
 
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i

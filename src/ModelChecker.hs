@@ -1,5 +1,7 @@
 module ModelChecker where
 
+import Data.Maybe
+
 -- Agents are represented by strings
 type Agent = String
 
@@ -50,9 +52,7 @@ myLookup x (y:rest) = if x == fst y then Just (snd y) else myLookup x rest
 
 -- version of lookup that assumes the first one of the tuple exists in the list
 unsafeLookup :: Eq a => a -> [(a,b)] -> b
-unsafeLookup x list = case lookup x list of
-  Just y -> y
-  Nothing -> undefined
+unsafeLookup x list = Data.Maybe.fromMaybe undefined (lookup x list)
 
 -- returns all the worlds of a model
 worldsOf :: Model -> [World]
@@ -68,13 +68,13 @@ isTrue _  Top       = True
 isTrue _  Bot       = False
 isTrue (Mo val _,w) (P p) = p `elem` unsafeLookup w val
 isTrue a (Neg f)    = not $ isTrue a f
-isTrue a (Con fs)   = and (map (isTrue a) fs)
-isTrue a (Dis fs)   = or (map (isTrue a) fs)
+isTrue a (Con fs)   = all (isTrue a) fs
+isTrue a (Dis fs)   = any (isTrue a) fs
 isTrue a (Imp f g)  = not (isTrue a f) || isTrue a g
 isTrue a (Bim f g)  = isTrue a f == isTrue a g
 isTrue (m,w) (Kno i f) =
   all (\w' -> isTrue (m,w') f) (localState (m, w) i)
-isTrue (m, w) (Ann f g)  = if isTrue (m,w) f then isTrue (m ! f, w) g else True
+isTrue (m, w) (Ann f g)  = not (isTrue (m,w) f) || isTrue (m ! f, w) g
 
 -- not sure anymore what this does.
 -- returns worlds that are reachable for an agent from the actual world?
@@ -91,8 +91,7 @@ publicAnnounce m@(Mo val rel) f = Mo newVal newRel where
   newVal = [ (w,v) | (w,v) <- val, (m,w) |= f ] -- exercise: write with filter using fst or snd
   newRel = [ (i, filter (/= []) $ prune parts) | (i,parts) <- rel ]
   prune :: [[Int]] -> [[Int]]
-  prune [] = []
-  prune (ws:rest) = [ w | w <- ws, w `elem` map fst newVal ] : prune rest
+  prune = map (\ws -> [w | w <- ws, w `elem` map fst newVal])
 
 -- formula of an agent knowing whether or not a given formula is true
 knowWhether :: Agent -> Formula -> Formula
