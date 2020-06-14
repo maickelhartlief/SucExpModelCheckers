@@ -85,12 +85,25 @@ makeVocabulary worlds = sort $ nub $ concatMap snd worlds
 makeFormula :: ([Proposition], [(World,Assignment)]) -> Formula
 makeFormula (vocabulary, worlds) = Dis [ Con $ map P a ++ map (Neg . P) (vocabulary \\ a) | (_,a) <- worlds ]
 
+
+-- NOTE: Most of this is placeholders and unfinished ideas.
+--       it is also currently the only function in the system producing any warnings.
+-- What it eventually needs to do (I think) is for every agent, go through all of
+-- the lists of indistinguishable worlds and extract unknown propositions from them,
+-- turning those into the mental program like so: Cap [Cup [Ass p0 Top, Ass P0 Bot], ...]
 makeSucRelations :: [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
-makeSucRelations worldspace ((ag, rel):rest) = (ag, makeMenProg rel) : makeSucRelations worldspace rest where
+makeSucRelations worldspace ((ag, rel):restA) = (ag, makeMenProg rel) : makeSucRelations worldspace restA where
+  -- TODO: (about commented attempt) related1 and related2 should be every pair the list of worlds
+  -- TODO: successfully make every p in xOr list into 2 elements "Ass p Top, Ass p Bot" in that list
   makeMenProg :: [[World]] -> MenProg
-  -- TODO: related1 and related2 should be every pair the list of worlds
-  -- TODO: sucesfully make every p in xOr list into 2 elements "Ass p Top, Ass p Bot" in that list
-  makeMenProg (related:rest) = Cap map (\p -> [Cup [Ass p Top, Ass p Bot]) (xOr (unsafeLookup related1 worldspace) (unsafeLookup related2 worldspace)) where
+  makeMenProg worldspace = Cap [ Cup (    [Ass p Top | p <- x]
+                                        ++  [Ass p Bot | p <- x] ) ] where
+                         --Cap [map (\p -> [Cup [Ass p Top, Ass p Bot]]) (xOr (unsafeLookup related1 worldspace) (unsafeLookup related2 worldspace)) where
+    x = retrieveP worldspace
+    retrieveP :: [[World]] -> [Proposition]
+    retrieveP [] = []
+    retrieveP (reachable:restW) = y ++ retrieveP restW where
+      y = undefined-- a way to figure out which propositions the agent does not have knowledge on. an attempts was made in the comment above, using the xOr function below
     xOr :: [Proposition] -> [Proposition] -> [Proposition]
     xOr w1 w2 = [p | p <- w1 `union` w2, p `notElem` (w1 `intersect` w2)]
 
