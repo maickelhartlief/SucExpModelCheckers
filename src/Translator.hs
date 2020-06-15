@@ -3,7 +3,7 @@ module Translator where
 import ModelChecker
 import Succinct
 import NMuddyChildren (powerList)
-import Data.List ((\\), sort, nub, elem, notElem, union, intersect)
+import Data.List ((\\), sort, nub, delete, elem, notElem)
 
 
 -- translates from a succinct model to an explicit model
@@ -34,28 +34,28 @@ getCurWorld (world:rest) state = if snd world == state
                                   else getCurWorld rest state
 -- getCurWorld worlds state = unsafeLookup state $ map swap worlds
 
-
 -- for identical worlds, add a new proposition to make them unique
 -- definition 10 in short paper. bruteforcing this by just adding a proposition for every (non-unique) world
 -- definition for every world, but this will increase size of model for every translation. so do only for identical worlds
--- NOTE: assumes ordered worldspace!
--- NOTE: doesn't fully update vocab. only the first extra proposition
+-- NOTE: assumes that worlds are ordered by valuation!
+-- NOTE: doesn't fully update vocab. only the first extra proposition -DONE.
 ensureUniqueValuations :: [Proposition] -> [(World, Assignment)] -> ([Proposition], [(World, Assignment)])
 ensureUniqueValuations vocab [] = (vocab, [])
-ensureUniqueValuations vocab (w:rest) = if snd w == snd (head rest)
-                          then (vocab ++ [newProp], newWorld w
-                               ++ newWorld (head rest)
-                               ++ snd (ensureUniqueValuations (vocab ++ [newProp]) (tail rest)))
-                          else (fst ensureRest ++ [newProp], snd ensureRest) where
-                            ensureRest = ensureUniqueValuations vocab rest
+ensureUniqueValuations vocab [w] = (vocab, [w])
+ensureUniqueValuations vocab (w:v:rest) = if snd w == snd v
+                          then (fst x , newWorld w ++ snd x)
+                          else (fst ensureRest, w : snd ensureRest) where
+                            ensureRest = ensureUniqueValuations vocab (v:rest)
                             newProp = last vocab + 1
                             newWorld :: (World, Assignment) -> [(World, Assignment)]
                             newWorld world = [(fst world, snd world ++ [newProp])]
+                            x = ensureUniqueValuations (vocab ++ [newProp]) (v:rest)
 
+-- TODO: move this to test file
+-- ensureUniqueValuations .. ... `shouldBe` ...
 -- the next 2 functions are used to test ensureUniqueValuations.
 uniqueTestVocabulary :: [Proposition]
 uniqueTestVocabulary = [0, 1, 2, 3, 4]
-
 uniqueTestWorldspace :: [(World, Assignment)]
 uniqueTestWorldspace = [ (0, [0, 1, 2])
                        , (1, [0, 1, 2])
@@ -69,7 +69,7 @@ exp2suc :: (Model, World) -> (SuccinctModel, State)
 exp2suc (Mo worlds rel, world) = (SMo v f [] sucRel, s) where
   v = fst space
   f = makeFormula space
-  sucRel = makeSucRelations worlds rel
+  sucRel = makeSucRelations v (snd space) rel
   s = getCurState worlds world
   space :: ([Proposition], [(World, Assignment)])
   space = ensureUniqueValuations (makeVocabulary worlds) worlds
@@ -91,13 +91,26 @@ makeFormula (vocabulary, worlds) = Dis [ Con $ map P a ++ map (Neg . P) (vocabul
 -- What it eventually needs to do (I think) is for every agent, go through all of
 -- the lists of indistinguishable worlds and extract unknown propositions from them,
 -- turning those into the mental program like so: Cap [Cup [Ass p0 Top, Ass P0 Bot], ...]
-makeSucRelations :: [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
-makeSucRelations worldspace ((ag, rel):restA) = (ag, makeMenProg rel) : makeSucRelations worldspace restA where
-  -- TODO: (about commented attempt) related1 and related2 should be every pair the list of worlds
-  -- TODO: successfully make every p in xOr list into 2 elements "Ass p Top, Ass p Bot" in that list
-  makeMenProg :: [[World]] -> MenProg
-  makeMenProg worldspace = Cap [ Cup (    [Ass p Top | p <- x]
-                                        ++  [Ass p Bot | p <- x] ) ] where
+makeSucRelations :: [Proposition] -> [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
+makeSucRelations _ _ [] = []
+makeSucRelations vocab worldspace ((ag, rel):restA) = (ag, Cup (Tst Top : makeMenProgs rel)) : makeSucRelations vocab worldspace restA where
+  makeMenProgs :: [[World]] -> [MenProg]
+  makeMenProgs [] = []
+  makeMenProgs ([_]:rest) = makeMenProgs rest
+  makeMenProgs (ws:rest) = Seq [ Tst magicFormula , changeAll , Tst magicFormula ] : makeMenProgs rest where
+    relevantVocab = sort $ nub [ p | w <- ws, v <- delete w ws, p <- unsafeLookup w worldspace, p `notElem` unsafeLookup v worldspace ]
+    changeAll = Seq [ Cup [ Ass p Top , Ass p Bot ] | p <- relevantVocab ]
+    magicFormula = Dis (map (assignment2form vocab) (map (\w -> unsafeLookup w worldspace) ws))
+    --  map (\w -> unsafeLookup w worldspace) ws == [ a | (w,a) <- worldspace, w `elem` ws]
+
+assignment2form :: [Proposition] -> Assignment -> Formula
+assignment2form ps a = Con $ map P a ++ map (Neg . P) (ps \\ a)
+
+
+-- TODO: make tests to ensure suc and exp satisfy same things
+
+{-  makeMenProg worldspace = Cap [ Cup (    [Ass p Top | p <- x]
+                                      ++  [Ass p Bot | p <- x] ) ] where
                          --Cap [map (\p -> [Cup [Ass p Top, Ass p Bot]]) (xOr (unsafeLookup related1 worldspace) (unsafeLookup related2 worldspace)) where
     x = retrieveP worldspace
     retrieveP :: [[World]] -> [Proposition]
@@ -106,6 +119,7 @@ makeSucRelations worldspace ((ag, rel):restA) = (ag, makeMenProg rel) : makeSucR
       y = undefined-- a way to figure out which propositions the agent does not have knowledge on. an attempts was made in the comment above, using the xOr function below
     xOr :: [Proposition] -> [Proposition] -> [Proposition]
     xOr w1 w2 = [p | p <- w1 `union` w2, p `notElem` (w1 `intersect` w2)]
+-}
 
 -- by symposium: preliminary results (sucinct vs. symbolic&explicit) not entire thesis yet :)
 -- week after symposium: full thesis draft!
