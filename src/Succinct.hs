@@ -4,6 +4,7 @@ import Data.List (elem, sort, delete, nub, union, intersect)
 
 import ModelChecker
 import NMuddyChildren (powerList)
+import SMCDEL.Language hiding(isTrue, (|=))
 
 -- (state is just world with only valuation. used in succinct models)
 -- (mental program == acasibility program in DEL)
@@ -12,8 +13,8 @@ import NMuddyChildren (powerList)
 
 
 -- Definitions of mental programs
-data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
-             | Tst Formula             -- Test form
+data MenProg = Ass Prp Form -- Assign prop to truthvalue of form
+             | Tst Form             -- Test form
              | Seq [MenProg]           -- Execute forms sequencially
              | Cup [MenProg]           -- execute either of the forms
              | Cap [MenProg]           -- intersection of forms
@@ -22,11 +23,11 @@ data MenProg = Ass Proposition Formula -- Assign prop to truthvalue of form
 -- \pi ::= p <- β | β? | (\pi ; \pi) | (\pi ∪ \pi) | (\pi ∩ \pi) | \pi^−1
 
 -- a set of propositions that are true
-type State = [Proposition]
+type State = [Prp]
 
 -- a Succinct representation of a model
--- third parameter [Formula]: announced formulas, listed with the newest announcement first
-data SuccinctModel = SMo [Proposition] Formula [Formula] [(Agent, MenProg)] deriving (Eq,Ord,Show)
+-- third parameter [Form]: announced formulas, listed with the newest announcement first
+data SuccinctModel = SMo [Prp] Form [Form] [(Agent, MenProg)] deriving (Eq,Ord,Show)
 
 statesOf :: SuccinctModel -> [State]
 statesOf (SMo vocab betaM []     _) = filter (`boolIsTrue` betaM) (allStatesFor vocab)
@@ -34,20 +35,30 @@ statesOf (SMo vocab betaM (f:fs) rel) = filter (\s -> sucIsTrue (oldModel,s) f) 
   oldModel = SMo vocab betaM fs rel
 
 -- checks whether a formula is true given an list of true propositions
-boolIsTrue :: State -> Formula -> Bool
+boolIsTrue :: State -> Form -> Bool
 boolIsTrue _  Top       = True
 boolIsTrue _  Bot       = False
-boolIsTrue s (P p)      = p `elem` s
+boolIsTrue s (PrpF p)      = p `elem` s
 boolIsTrue a (Neg f)    = not $ boolIsTrue a f
-boolIsTrue a (Con fs)   = all (boolIsTrue a) fs
-boolIsTrue a (Dis fs)   = any (boolIsTrue a) fs
-boolIsTrue a (Imp f g)  = not (boolIsTrue a f) || boolIsTrue a g
-boolIsTrue a (Bim f g)  = boolIsTrue a f == boolIsTrue a g
-boolIsTrue _ (Kno _ _) = error "This is not a boolean formula"
-boolIsTrue _ (Ann _ _) = error "This is not a boolean formula"
+boolIsTrue a (Conj fs)   = all (boolIsTrue a) fs
+boolIsTrue a (Disj fs)   = any (boolIsTrue a) fs
+boolIsTrue a (Impl f g)  = not (boolIsTrue a f) || boolIsTrue a g
+boolIsTrue a (Equi f g)  = boolIsTrue a f == boolIsTrue a g
+boolIsTrue _ (K _ _) = error "This is not a boolean formula"
+boolIsTrue _ (Kw _ _) = error "This is not a boolean formula"
+boolIsTrue _ (PubAnnounce _ _) = error "This is not a boolean formula"
+boolIsTrue _ (Xor _) = error "not implemented by this system"
+boolIsTrue _ (Forall _ _) = error "not implemented by this system"
+boolIsTrue _ (Exists _ _) = error "not implemented by this system"
+boolIsTrue _ (Ck _ _) = error "not implemented by this system"
+boolIsTrue _ (Ckw _ _) = error "not implemented by this system"
+boolIsTrue _ (PubAnnounceW _ _) = error "not implemented by this system"
+boolIsTrue _ (Announce _ _ _) = error "not implemented by this system"
+boolIsTrue _ (AnnounceW _ _ _) = error "not implemented by this system"
+boolIsTrue _ (Dia _ _) = error "not implemented by this system"
 
 -- a list with all possible states given a finite set of probabilities
-allStatesFor :: [Proposition] -> [State]
+allStatesFor :: [Prp] -> [State]
 allStatesFor = powerList
 
 
@@ -59,7 +70,7 @@ isStateOf s (SMo vocab betaM (f:fs) rel) =
      oldModel = SMo vocab betaM fs rel
 
 -- whether a state is reachable from another state (first argument is full vocabulary)
-areConnected :: [Proposition] -> MenProg -> State -> State -> Bool
+areConnected :: [Prp] -> MenProg -> State -> State -> Bool
 areConnected _ (Ass p f) s1 s2       = if boolIsTrue s1 f
                                          then union [p] s1 `setEq` s2
                                          else delete p s1 `setEq` s2
@@ -78,7 +89,7 @@ setEq xs ys = nub (sort xs) == nub (sort ys)
 
 -- returns all states that are reachable from a certain state in a mental program
 -- (first argument is full vocabulary)
-reachableFromHere :: [Proposition] -> MenProg -> State -> [State]
+reachableFromHere :: [Prp] -> MenProg -> State -> [State]
 reachableFromHere _ (Ass p f) s = if boolIsTrue s f
                                      then [sort $ union [p] s]
                                      else [delete p s]
@@ -93,25 +104,36 @@ reachableFromHere v (Cap (mp:rest)) s = reachableFromHere v (Cap rest) s `inters
 reachableFromHere v (Inv mp)        s = [ s' | s' <- allStatesFor v, areConnected v mp s' s ]
 
 -- isTrue for succinct models
-sucIsTrue :: (SuccinctModel, State) -> Formula -> Bool
+sucIsTrue :: (SuccinctModel, State) -> Form -> Bool
 sucIsTrue _  Top       = True
 sucIsTrue _  Bot       = False
-sucIsTrue (_ ,s) (P p) = p `elem` s
+sucIsTrue (_ ,s) (PrpF p) = p `elem` s
 sucIsTrue a (Neg f)    = not $ sucIsTrue a f
-sucIsTrue a (Con fs)   = all (sucIsTrue a) fs
-sucIsTrue a (Dis fs)   = any (sucIsTrue a) fs
-sucIsTrue a (Imp f g)  = not (sucIsTrue a f) || sucIsTrue a g
-sucIsTrue a (Bim f g)  = sucIsTrue a f == sucIsTrue a g
+sucIsTrue a (Conj fs)   = all (sucIsTrue a) fs
+sucIsTrue a (Disj fs)   = any (sucIsTrue a) fs
+sucIsTrue a (Impl f g)  = not (sucIsTrue a f) || sucIsTrue a g
+sucIsTrue a (Equi f g)  = sucIsTrue a f == sucIsTrue a g
 -- formula should be true in all states reachable from the actual state for the
 -- agent that are in the stateSpace of the model (checked for by checking if the
 -- state is also true for the formula given in the SuccinctModel)
 --sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
 --  all (\s' -> sucIsTrue (m,s') f) (reachableFromHere v (unsafeLookup i rel) s `intersect` statesOf m)
-sucIsTrue (m@(SMo v _ _ rel), s) (Kno i f) =
+sucIsTrue (m@(SMo v _ _ rel), s) (K i f) =
    all
     (\s' -> sucIsTrue (m,s') f)
     (filter (`isStateOf` m) $ reachableFromHere v (unsafeLookup i rel) s)
-sucIsTrue (m, s) (Ann f g)  = not (sucIsTrue (m, s) f) || sucIsTrue(sucPublicAnnounce m f, s) g
+sucIsTrue a (Kw i f) = sucIsTrue a (Disj [ K i f, K i (Neg f) ])
+sucIsTrue (m, s) (PubAnnounce f g)  = not (sucIsTrue (m, s) f) ||
+                              sucIsTrue(m ! f, s) g
+sucIsTrue _ (Xor _) = error "not implemented by this system"
+sucIsTrue _ (Forall _ _) = error "not implemented by this system"
+sucIsTrue _ (Exists _ _) = error "not implemented by this system"
+sucIsTrue _ (Ck _ _) = error "not implemented by this system"
+sucIsTrue _ (Ckw _ _) = error "not implemented by this system"
+sucIsTrue _ (PubAnnounceW _ _) = error "not implemented by this system"
+sucIsTrue _ (Announce _ _ _) = error "not implemented by this system"
+sucIsTrue _ (AnnounceW _ _ _) = error "not implemented by this system"
+sucIsTrue _ (Dia _ _) = error "not implemented by this system"
 
 
 -- NOTE: doesn't work if haskell doesn't support function overloading, which i
@@ -129,7 +151,7 @@ instance UpdateAble SuccinctModel where
 --       else error "only accepts Model or SuccinctModel"
 
 -- returns the new succinct model that results from having a public announcentmin a succinct model
-sucPublicAnnounce :: SuccinctModel -> Formula -> SuccinctModel
+sucPublicAnnounce :: SuccinctModel -> Form -> SuccinctModel
 sucPublicAnnounce (SMo v fm fs rel) f = SMo v fm (f:fs) rel
 
 -- (Model,world) |= phi ???

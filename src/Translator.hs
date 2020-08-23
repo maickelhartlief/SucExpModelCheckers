@@ -1,5 +1,6 @@
 module Translator where
 
+import SMCDEL.Language hiding(isTrue, (|=))
 import ModelChecker
 import Succinct
 import NMuddyChildren (powerList)
@@ -14,11 +15,11 @@ suc2exp (SMo v f _ sucRel, s) = (Mo worldspace rel, w) where
   rel = makeExpRelations v sucRel worldspace
   w = getCurWorld worldspace s
 
-makeWorlds :: [Proposition] -> Formula -> [(World, Assignment)]
+makeWorlds :: [Prp] -> Form -> [(World, Assignment)]
 makeWorlds vocab form = zip [0..] [w | w <- powerList vocab,  boolIsTrue w form]
 -- use statesOf to also do non-initial models.
 
-makeExpRelations :: [Proposition] -> [(Agent, MenProg)] -> [(World, Assignment)] -> [(Agent, [[World]])]
+makeExpRelations :: [Prp] -> [(Agent, MenProg)] -> [(World, Assignment)] -> [(Agent, [[World]])]
 makeExpRelations vocab relations worlds = [ (fst r, ass r worlds) | r <- relations ] where
   ass :: (Agent, MenProg) -> [(World, Assignment)] -> [[World]]
   ass _ []     = []
@@ -39,14 +40,16 @@ getCurWorld (world:rest) state = if snd world == state
 -- definition for every world, but this will increase size of model for every translation. so do only for identical worlds
 -- NOTE: assumes that worlds are ordered by valuation!
 -- NOTE: doesn't fully update vocab. only the first extra proposition -DONE.
-ensureUniqueValuations :: [Proposition] -> [(World, Assignment)] -> ([Proposition], [(World, Assignment)])
+ensureUniqueValuations :: [Prp] -> [(World, Assignment)] -> ([Prp], [(World, Assignment)])
 ensureUniqueValuations vocab [] = (vocab, [])
 ensureUniqueValuations vocab [w] = (vocab, [w])
 ensureUniqueValuations vocab (w:v:rest) = if snd w == snd v
                           then (fst x , newWorld w ++ snd x)
                           else (fst ensureRest, w : snd ensureRest) where
                             ensureRest = ensureUniqueValuations vocab (v:rest)
-                            newProp = last vocab + 1
+                            newProp = P ((number (last vocab)) + 1)
+                            number  :: Prp -> Int
+                            number (P n) = n
                             newWorld :: (World, Assignment) -> [(World, Assignment)]
                             newWorld world = [(fst world, snd world ++ [newProp])]
                             x = ensureUniqueValuations (vocab ++ [newProp]) (v:rest)
@@ -54,14 +57,15 @@ ensureUniqueValuations vocab (w:v:rest) = if snd w == snd v
 -- TODO: move this to test file
 -- ensureUniqueValuations .. ... `shouldBe` ...
 -- the next 2 functions are used to test ensureUniqueValuations.
-uniqueTestVocabulary :: [Proposition]
-uniqueTestVocabulary = [0, 1, 2, 3, 4]
+uniqueTestVocabulary :: [Prp]
+uniqueTestVocabulary = [P 0, P 1, P 2, P 3, P 4]
+
 uniqueTestWorldspace :: [(World, Assignment)]
-uniqueTestWorldspace = [ (0, [0, 1, 2])
-                       , (1, [0, 1, 2])
-                       , (2, [3, 4])
-                       , (3, [4])
-                       , (4, [4]) ]
+uniqueTestWorldspace = [ (0, [P 0, P 1, P 2])
+                       , (1, [P 0, P 1, P 2])
+                       , (2, [P 3, P 4])
+                       , (3, [P 4])
+                       , (4, [P 4]) ]
 
 -- translates from a explicit model to a succinct model
 -- precondition: the given model has unique valuations, i.e. no two worlds satisfy the same atoms.
@@ -71,19 +75,19 @@ exp2suc (Mo worlds rel, world) = (SMo v f [] sucRel, s) where
   f = makeFormula space
   sucRel = makeSucRelations v (snd space) rel
   s = getCurState worlds world
-  space :: ([Proposition], [(World, Assignment)])
+  space :: ([Prp], [(World, Assignment)])
   space = ensureUniqueValuations (makeVocabulary worlds) worlds
 
 getCurState :: [(World, Assignment)] -> World -> State
 getCurState worlds world = unsafeLookup world worlds
 
-makeVocabulary :: [(World, Assignment)] -> [Proposition]
+makeVocabulary :: [(World, Assignment)] -> [Prp]
 makeVocabulary worlds = sort $ nub $ concatMap snd worlds
 
 -- make sure to apply addAtomsToEnsureUniqueValuations before this.
 -- use simplify function on this (can be taken from SMCDEL)
-makeFormula :: ([Proposition], [(World,Assignment)]) -> Formula
-makeFormula (vocabulary, worlds) = Dis [ Con $ map P a ++ map (Neg . P) (vocabulary \\ a) | (_,a) <- worlds ]
+makeFormula :: ([Prp], [(World,Assignment)]) -> Form
+makeFormula (vocabulary, worlds) = Disj [ Conj $ map PrpF a ++ map (Neg . PrpF) (vocabulary \\ a) | (_,a) <- worlds ]
 
 
 -- NOTE: Most of this is placeholders and unfinished ideas.
@@ -91,7 +95,7 @@ makeFormula (vocabulary, worlds) = Dis [ Con $ map P a ++ map (Neg . P) (vocabul
 -- What it eventually needs to do (I think) is for every agent, go through all of
 -- the lists of indistinguishable worlds and extract unknown propositions from them,
 -- turning those into the mental program like so: Cap [Cup [Ass p0 Top, Ass P0 Bot], ...]
-makeSucRelations :: [Proposition] -> [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
+makeSucRelations :: [Prp] -> [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
 makeSucRelations _ _ [] = []
 makeSucRelations vocab worldspace ((ag, rel):restA) = (ag, Cup (Tst Top : makeMenProgs rel)) : makeSucRelations vocab worldspace restA where
   makeMenProgs :: [[World]] -> [MenProg]
@@ -100,11 +104,11 @@ makeSucRelations vocab worldspace ((ag, rel):restA) = (ag, Cup (Tst Top : makeMe
   makeMenProgs (ws:rest) = Seq [ Tst magicFormula , changeAll , Tst magicFormula ] : makeMenProgs rest where
     relevantVocab = sort $ nub [ p | w <- ws, v <- delete w ws, p <- unsafeLookup w worldspace, p `notElem` unsafeLookup v worldspace ]
     changeAll = Seq [ Cup [ Ass p Top , Ass p Bot ] | p <- relevantVocab ]
-    magicFormula = Dis (map (assignment2form vocab) (map (\w -> unsafeLookup w worldspace) ws))
+    magicFormula = Disj (map (assignment2form vocab) (map (\w -> unsafeLookup w worldspace) ws))
     --  map (\w -> unsafeLookup w worldspace) ws == [ a | (w,a) <- worldspace, w `elem` ws]
 
-assignment2form :: [Proposition] -> Assignment -> Formula
-assignment2form ps a = Con $ map P a ++ map (Neg . P) (ps \\ a)
+assignment2form :: [Prp] -> Assignment -> Form
+assignment2form ps a = Conj $ map PrpF a ++ map (Neg . PrpF) (ps \\ a)
 
 
 -- TODO: make tests to ensure suc and exp satisfy same things

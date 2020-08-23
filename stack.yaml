@@ -39,7 +39,11 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+- smcdel-1.1.0
+- git: https://github.com/m4lvin/cudd.git
+  commit: 32f7d6b764a80bbf8f84c07e2c1d691469aaaba0
+- HasCacBDD-0.1.0.2
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

@@ -1,14 +1,36 @@
---module Spec where
-
 import Test.Hspec
 import ModelChecker
 import ThreeMuddyChildren
+import NMuddyChildren
 import SucNMuddyChildren
 import Succinct
 
 main :: IO ()
-main = hspec $ do
-  describe "sucFindMuddyNumber n (sucMuddyModelFor n n) == n -1" $ do
+main = hspec $
+  --describe "Benchmark explicit" $ do
+{-    it "n = 3, m = 3" $
+      check 3 3 `shouldBe` True
+-}  --it "n = 4, m = 3" $
+      --head  (snd (sucMuddyModelFor 7 7)) `shouldBe` 0
+{-    it "n = 5, m = 3" $
+      check 5 3 `shouldBe` True
+    it "n = 6, m = 3" $
+      check 6 3 `shouldBe` True
+    it "n = 7, m = 3" $
+      check 7 3 `shouldBe` True
+    it "n = 7, m = 4" $
+      check 7 4 `shouldBe` True
+    it "n = 7, m = 5" $
+      check 7 5 `shouldBe` True
+    it "n = 7, m = 6" $
+      check 7 6 `shouldBe` True
+    it "n = 7, m = 7" $
+      check 7 7 `shouldBe` True
+-}
+
+
+
+  describe "sucFindMuddyNumber n (sucMuddyModelFor n n) == n -1"
     it "n = 4" $
       (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 4 == 4
     it "n = 5" $
@@ -17,7 +39,7 @@ main = hspec $ do
       (\n -> sucFindMuddyNumber n (sucMuddyModelFor n n)) 6 == 6
 
   -- tests isTrue
-  describe "isTrue" $ do
+  describe "isTrue"
     it "random testformula  and model 1" $
       (mod1, 0) |= form1 `shouldBe` True
 

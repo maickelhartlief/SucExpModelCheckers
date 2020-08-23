@@ -1,35 +1,16 @@
 module ModelChecker where
 
 import Data.Maybe
-
--- Agents are represented by strings
-type Agent = String
-
--- Propositions are represented by Ints
-type Proposition = Int
-
--- a formula has some base cases and some operators on functions
-data Formula = Top                     -- True
-             | Bot                     -- False
-             | P Proposition           -- proposition
-             | Neg Formula             -- negation
-             | Con [Formula]           -- conjunction
-             | Dis [Formula]           -- disjunction
-             | Imp Formula Formula     -- implication
-             | Bim Formula Formula     -- bi-implication
-             | Kno Agent Formula       -- knowing
-             | Ann Formula Formula
-             deriving (Show,Eq,Ord)
---    \phi  ::= \top | \bot | p | \phi ^ \phi
+import SMCDEL.Language hiding(isTrue, (|=))
 
 class UpdateAble a where
-  (!) :: a -> Formula -> a
+  (!) :: a -> Form -> a
 
 instance UpdateAble Model where
   (!) = publicAnnounce
 
 -- Assignments are a list of propositions that are true in a world
-type Assignment = [Proposition]
+type Assignment = [Prp]
 
 -- Worlds are a possible reality where propositions get assigned a truth truthvalue
 type World = Int
@@ -41,8 +22,8 @@ type World = Int
 data Model = Mo [(World,Assignment)] [(Agent,[[World]])] deriving (Eq,Ord,Show)
 
 -- diamond version of announcement: f is true and after announcing it we have g
-ann :: Formula -> Formula -> Formula
-ann f g = Con [f , Ann f g]
+ann :: Form -> Form -> Form
+ann f g = Conj [f , PubAnnounce f g]
 
 -- a version of an exiting function that returns the second of a tuple of which
 -- the first in the input from a list of tuples.
@@ -59,24 +40,36 @@ worldsOf :: Model -> [World]
 worldsOf (Mo val _rel) = map fst val
 
 -- shorthand for funstion: isTrue
-(|=) :: (Model,World) -> Formula -> Bool
+(|=) :: (Model,World) -> Form -> Bool
 (|=) = isTrue
 
--- returns whether a formula is true in a pointed model (a perticular world in a model)
-isTrue :: (Model,Int) -> Formula -> Bool
+-- returns whether a Form is true in a pointed model (a perticular world in a model)
+isTrue :: (Model,Int) -> Form -> Bool
 isTrue _  Top       = True
 isTrue _  Bot       = False
-isTrue (Mo val _,w) (P p) = p `elem` unsafeLookup w val
+isTrue (Mo val _,w) (PrpF p) = p `elem` unsafeLookup w val
 isTrue a (Neg f)    = not $ isTrue a f
-isTrue a (Con fs)   = all (isTrue a) fs
-isTrue a (Dis fs)   = any (isTrue a) fs
-isTrue a (Imp f g)  = not (isTrue a f) || isTrue a g
-isTrue a (Bim f g)  = isTrue a f == isTrue a g
-isTrue (m,w) (Kno i f) =
-  all (\w' -> isTrue (m,w') f) (localState (m, w) i)
-isTrue (m, w) (Ann f g)  = not (isTrue (m,w) f) || isTrue (m ! f, w) g
+isTrue a (Conj fs)   = all (isTrue a) fs
+isTrue a (Disj fs)   = any (isTrue a) fs
+isTrue a (Impl f g)  = not (isTrue a f) || isTrue a g
+isTrue a (Equi f g)  = isTrue a f == isTrue a g
+isTrue (m, w) (K i f) =
+  all
+    (\w' -> isTrue (m,w') f)
+    (localState (m, w) i)
+isTrue a (Kw i f) = isTrue a (Disj [ K i f, K i (Neg f) ])
+isTrue (m, w) (PubAnnounce f g)  = not (isTrue (m,w) f) ||
+                           isTrue (m ! f, w) g
+isTrue _ (Xor _) = error "not implemented by this system"
+isTrue _ (Forall _ _) = error "not implemented by this system"
+isTrue _ (Exists _ _) = error "not implemented by this system"
+isTrue _ (Ck _ _) = error "not implemented by this system"
+isTrue _ (Ckw _ _) = error "not implemented by this system"
+isTrue _ (PubAnnounceW _ _) = error "not implemented by this system"
+isTrue _ (Announce _ _ _) = error "not implemented by this system"
+isTrue _ (AnnounceW _ _ _) = error "not implemented by this system"
+isTrue _ (Dia _ _) = error "not implemented by this system"
 
--- not sure anymore what this does.
 -- returns worlds that are reachable for an agent from the actual world?
 localState :: (Model,Int) -> Agent -> [Int]
 localState (Mo _ rel,w) i = case filter (w `elem`) (unsafeLookup i rel) of
@@ -86,13 +79,24 @@ localState (Mo _ rel,w) i = case filter (w `elem`) (unsafeLookup i rel) of
   (_:_:_) -> error $ "agent " ++ i ++ " has more than one equivalence class: " ++ show (unsafeLookup i rel)
 
 -- returns the new model that results from having a public announcement in a model
-publicAnnounce :: Model -> Formula -> Model
+publicAnnounce :: Model -> Form -> Model
 publicAnnounce m@(Mo val rel) f = Mo newVal newRel where
-  newVal = [ (w,v) | (w,v) <- val, (m,w) |= f ] -- exercise: write with filter using fst or snd
+  newVal = [ (w,v) | (w,v) <- val, (m,w) |= f ]
   newRel = [ (i, filter (/= []) $ prune parts) | (i,parts) <- rel ]
   prune :: [[Int]] -> [[Int]]
   prune = map (\ws -> [w | w <- ws, w `elem` map fst newVal])
 
--- formula of an agent knowing whether or not a given formula is true
-knowWhether :: Agent -> Formula -> Formula
-knowWhether i f = Dis [ Kno i f, Kno i (Neg f) ]
+-- WAS PUT INTO ISTRUE AS Kw
+-- Form of an agent knowing whether or not a given Form is true
+-- knowWhether :: Agent -> Form -> Form
+-- knowWhether i f = Disj [ K i f, K i (Neg f) ]
+
+
+-- approach 1: fork  SMCDEL and add my stuff. drawbacks: will be very big and long to compile after every change.
+
+-- add SMCDEL as package. only import language module. use Form datatype from SMCDEL instead of my own.
+
+-- translator change or add. between SMCDEL explicit and my succinct.
+
+-- add to stack and dependencies
+-- import SMCDEL.language into modelchecker and
