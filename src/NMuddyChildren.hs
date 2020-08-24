@@ -1,9 +1,9 @@
 module NMuddyChildren where
 
-import Data.List (sortOn,groupBy,sort,delete)
+import ExpModelChecker
 
-import ModelChecker
 import SMCDEL.Language hiding(isTrue, (|=))
+import Data.List (sortOn,groupBy,sort,delete)
 
 -- n children, of which m are muddy
 -- returns with a list of all possible actual worlds

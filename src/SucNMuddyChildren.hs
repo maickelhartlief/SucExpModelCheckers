@@ -1,7 +1,8 @@
 module SucNMuddyChildren where
 
-import Succinct
+import SucModelChecker
 import NMuddyChildren
+
 import SMCDEL.Language hiding(isTrue, (|=))
 
 -- n children of which the first m are muddy
@@ -20,8 +21,6 @@ makeSucRels :: Int -> [ (Agent, MenProg) ]
 makeSucRels n = [ ("child" ++ show k, Cup [Ass (P k) Top, Ass (P k) Bot]) | k <- [0 .. (n - 1)]]
 
 -- makes all viable states of n children in which m are muddy
--- NOTE: very inefficient for bigger inputs because of powerlist.
---       an alternative might be randomly picking m items from the vocabulary
 makeStates :: [Prp] -> Int -> [State]
 makeStates vocabulary m = [k | k <- powerList vocabulary, length k == m]
 

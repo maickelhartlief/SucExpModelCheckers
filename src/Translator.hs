@@ -1,9 +1,10 @@
 module Translator where
 
-import SMCDEL.Language hiding(isTrue, (|=))
-import ModelChecker
-import Succinct
+import ExpModelChecker
+import SucModelChecker
 import NMuddyChildren (powerList)
+
+import SMCDEL.Language hiding(isTrue, (|=))
 import Data.List ((\\), sort, nub, delete, elem, notElem)
 
 
@@ -39,7 +40,6 @@ getCurWorld (world:rest) state = if snd world == state
 -- definition 10 in short paper. bruteforcing this by just adding a proposition for every (non-unique) world
 -- definition for every world, but this will increase size of model for every translation. so do only for identical worlds
 -- NOTE: assumes that worlds are ordered by valuation!
--- NOTE: doesn't fully update vocab. only the first extra proposition -DONE.
 ensureUniqueValuations :: [Prp] -> [(World, Assignment)] -> ([Prp], [(World, Assignment)])
 ensureUniqueValuations vocab [] = (vocab, [])
 ensureUniqueValuations vocab [w] = (vocab, [w])
@@ -54,8 +54,6 @@ ensureUniqueValuations vocab (w:v:rest) = if snd w == snd v
                             newWorld world = [(fst world, snd world ++ [newProp])]
                             x = ensureUniqueValuations (vocab ++ [newProp]) (v:rest)
 
--- TODO: move this to test file
--- ensureUniqueValuations .. ... `shouldBe` ...
 -- the next 2 functions are used to test ensureUniqueValuations.
 uniqueTestVocabulary :: [Prp]
 uniqueTestVocabulary = [P 0, P 1, P 2, P 3, P 4]
@@ -90,9 +88,7 @@ makeFormula :: ([Prp], [(World,Assignment)]) -> Form
 makeFormula (vocabulary, worlds) = Disj [ Conj $ map PrpF a ++ map (Neg . PrpF) (vocabulary \\ a) | (_,a) <- worlds ]
 
 
--- NOTE: Most of this is placeholders and unfinished ideas.
---       it is also currently the only function in the system producing any warnings.
--- What it eventually needs to do (I think) is for every agent, go through all of
+-- for every agent, goes through all of
 -- the lists of indistinguishable worlds and extract unknown propositions from them,
 -- turning those into the mental program like so: Cap [Cup [Ass p0 Top, Ass P0 Bot], ...]
 makeSucRelations :: [Prp] -> [(World, Assignment)] -> [(Agent,[[World]])] -> [(Agent, MenProg)]
@@ -109,50 +105,3 @@ makeSucRelations vocab worldspace ((ag, rel):restA) = (ag, Cup (Tst Top : makeMe
 
 assignment2form :: [Prp] -> Assignment -> Form
 assignment2form ps a = Conj $ map PrpF a ++ map (Neg . PrpF) (ps \\ a)
-
-
--- TODO: make tests to ensure suc and exp satisfy same things
-
-{-  makeMenProg worldspace = Cap [ Cup (    [Ass p Top | p <- x]
-                                      ++  [Ass p Bot | p <- x] ) ] where
-                         --Cap [map (\p -> [Cup [Ass p Top, Ass p Bot]]) (xOr (unsafeLookup related1 worldspace) (unsafeLookup related2 worldspace)) where
-    x = retrieveP worldspace
-    retrieveP :: [[World]] -> [Proposition]
-    retrieveP [] = []
-    retrieveP (reachable:restW) = y ++ retrieveP restW where
-      y = undefined-- a way to figure out which propositions the agent does not have knowledge on. an attempts was made in the comment above, using the xOr function below
-    xOr :: [Proposition] -> [Proposition] -> [Proposition]
-    xOr w1 w2 = [p | p <- w1 `union` w2, p `notElem` (w1 `intersect` w2)]
--}
-
--- by symposium: preliminary results (sucinct vs. symbolic&explicit) not entire thesis yet :)
--- week after symposium: full thesis draft!
--- final version whenever-ish (month later?)
--- system: translator implement todo's. undefinfed. make faster!! (allstatesfor and other things) (using data.map instead of lists of tuples) (maybe do intermediate checks to prune earlier. probably wouldn't work) (make know whether primitive)
--- run profiler to see what functions need speeding up. ^
--- system optional after deadline: compatible with SMCDEL
--- benchmark changes from now on. "this change changed speed from X to Y."
--- make benchmark automatic. (as far as possible) results should be (easily) reproducable (SMCDEL has example)
--- benchmark SMCDEL to get an idea (and a graph)
-
---[DONE] !!! fix all warnings
-
---[DONE] hlint --report src/ && firefox report.html
-
---   stack test --profile --test-arguments "--match sucFindMuddyNumber"
-{-
-Fri Jun  5 14:56 2020 Time and Allocation Profiling Report  (Final)
-
-   my-project-test +RTS -N -p -RTS --match sucFindMuddyNumber
-
-total time  =        2.76 secs   (11041 ticks @ 1000 us, 4 processors)
-total alloc = 7,458,474,144 bytes  (excludes profiling overheads)
-
-COST CENTRE       MODULE       SRC                                 %time %alloc
-
-reachableFromHere Succinct     src/Succinct.hs:(77,1)-(88,93)       50.9   88.3
-sucIsTrue         Succinct     src/Succinct.hs:(92,1)-(108,41)      25.5    0.0
-unsafeLookup      ModelChecker src/ModelChecker.hs:(53,1)-(55,22)   16.1    0.8
-isStateOf         Succinct     src/Succinct.hs:(37,1)-(39,35)        5.6    9.0
-sucIsTrue.\       Succinct     src/Succinct.hs:105:15-32             0.8    1.8
--}
