@@ -59,7 +59,7 @@ findMuddyNumbers (m@(Mo _ rel), w:rest) =
       curNumber = findMuddyNumber (length rel) (m, w)
       nextNumber = findMuddyNumbers (m, rest)
 
--- finds the number of announcements necessary in a model with n children
+-- finds the number of announcements necessary in a model with n children (all muddy)
 findMuddyNumber :: Int -> (Model,Int) -> Int
 findMuddyNumber n (m,w) = if (m,w) |= somebodyKnows n then 0 else loop (m ! atLeastOneMuddy n) + 1 where
            loop newM = if (newM,w) |= somebodyKnows n then 0 else loop (newM ! nobodyKnows n) + 1
