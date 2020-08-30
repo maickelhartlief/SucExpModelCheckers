@@ -43,18 +43,6 @@ executables:
     - my-project
     - random
     - criterion
-  my-project-graph:
-    main:               criterion2pgfplotcsv.hs
-    source-dirs:        graph
-    ghc-opions:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -Wall
-    dependencies:
-    - my-project
-    - Text
-    - Data
 
 tests:
   my-project-test:
@@ -69,6 +57,19 @@ tests:
     - my-project
     - hspec
     - QuickCheck
+  my-project-graph:
+    main:               criterion2pgfplotcsv.hs
+    source-dirs:        graph
+    ghc-opions:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    dependencies:
+    - my-project
+    - Text
+    - Data
+
 
 benchmarks:
   bench-muddychildren:
