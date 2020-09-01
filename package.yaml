@@ -58,9 +58,9 @@ tests:
     - hspec
     - QuickCheck
   my-project-graph:
-    main:               criterion2pgfplotcsv.hs
+    main:               criterion2pgfplotcsv.unix.hs
     source-dirs:        graph
-    ghc-opions:
+    ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
