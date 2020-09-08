@@ -20,10 +20,9 @@ import qualified SMCDEL.Translations.K
 import qualified SMCDEL.Other.MCTRIANGLE
 import qualified SMCDEL.Symbolic.K
 
---import SucModelChecker
---import ExpModelChecker
 import SucNMuddyChildren
 import NMuddyChildren
+import Translator
 
 checkForm :: Int -> Int -> Form
 checkForm n 0 = nobodyknows n
@@ -108,17 +107,19 @@ findNumberExplicit n m = findMuddyNumber n (muddyModelFor n m )
 findNumberSuccinct :: Int -> Int -> Int
 findNumberSuccinct n m = sucFindMuddyNumber n (sucMuddyModelFor n m )
 
+findNumberTranslatedExplicit :: Int -> Int -> Int
+findNumberTranslatedExplicit n m = findMuddyNumber n (suc2exp (sucMuddyModelFor n m) )
+
+findNumberTranslatedSuccinct :: Int -> Int -> Int
+findNumberTranslatedSuccinct n m = sucFindMuddyNumber n (exp2suc (muddyModelFor n m) )
+
 main :: IO ()
 main = defaultMain (map mybench
-  [ --("Triangle"  , findNumberTriangle  , [7..40] )
-  --, ("CacBDD"    , findNumberCacBDD    , [3..40] )
-  --, ("CUDD"      , findNumberCUDD      , [3..40] )
-  --, ("K"         , findNumberK         , [3..12] )
-  --, ("DEMOS5"    , findNumberDemoS5    , [3..12] )
-  --, ("Trans"     , findNumberTrans     , [3..12] )
-  --, ("TransK"    , findNumberTransK    , [3..11] )
-   ("Explicit"  , findNumberExplicit  , [1..6]  )
-  , ("succinct"  , findNumberSuccinct  , [1..6]  )
+  [ ("DEMOS5"    , findNumberDemoS5    , [1..11] )
+  , ("Explicit"  , findNumberExplicit  , [1..7]  )
+  , ("Succinct"  , findNumberSuccinct  , [1..7]  )
+  , ("TransExp"  , findNumberTranslatedExplicit  , [1..11]  )
+  , ("TransSuc"  , findNumberTranslatedSuccinct  , [1..7]  )
   ])
   where
     mybench (name,f,range) = bgroup name $ map (run f) range
